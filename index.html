@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en" data-color-mode="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Distributed Systems Visual Guide</title>
+    <link rel="stylesheet" href="/assets/css/theme.css" />
+    <script defer src="/assets/js/toggleTheme.js"></script>
+    <script defer src="/assets/js/site.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-brand">
+        <a href="/">Distributed Systems Visual Guide</a>
+      </div>
+      <nav class="site-nav">
+        <a href="/" class="is-active" aria-current="page">Home</a>
+        <a href="/pages/compute-patterns.html">Compute</a>
+        <a href="/pages/database-architectures.html">Storage</a>
+        <a href="/pages/consistency-models.html">Consistency</a>
+        <a href="/pages/networking-patterns.html">Networking</a>
+        <a href="/pages/kubernetes-patterns.html">Kubernetes</a>
+        <a href="/pages/system-design-patterns.html">Interview</a>
+      </nav>
+      <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
+    </header>
+    <main>
+      <section class="hero">
+        <h1>Distributed Systems Visual Guide</h1>
+        <p>
+          An interactive learning website for senior engineers and system designers.
+          Each module blends precise explanations with animations, playgrounds, and diagrams that build intuition.
+        </p>
+        <div class="hero-actions">
+          <a class="hero-link" href="/pages/compute-patterns.html">Start with compute patterns</a>
+          <a class="hero-link" href="/pages/system-design-patterns.html">Jump to interview patterns</a>
+        </div>
+      </section>
+
+      <section>
+        <h2>Core Topics</h2>
+        <div class="card-grid">
+          <a class="card" href="/pages/compute-patterns.html">
+            <h3>Compute patterns</h3>
+            <p>Service placement, scaling, and load distribution fundamentals.</p>
+          </a>
+          <a class="card" href="/pages/database-architectures.html">
+            <h3>Storage and data patterns</h3>
+            <p>Replication, sharding, and the architectural shape of data systems.</p>
+          </a>
+          <a class="card" href="/pages/consistency-models.html">
+            <h3>Consistency models</h3>
+            <p>Strong, causal, and eventual guarantees with practical trade-offs.</p>
+          </a>
+          <a class="card" href="/pages/networking-patterns.html">
+            <h3>Networking patterns</h3>
+            <p>Discovery, gateways, and protocol choices for reliable routing.</p>
+          </a>
+          <a class="card" href="/pages/kubernetes-patterns.html">
+            <h3>Kubernetes patterns</h3>
+            <p>Pods, controllers, sidecars, and safe deployment strategies.</p>
+          </a>
+          <a class="card" href="/pages/system-design-patterns.html">
+            <h3>Interview patterns</h3>
+            <p>Leadership, quorums, and reliability patterns that show up everywhere.</p>
+          </a>
+        </div>
+      </section>
+
+      <section>
+        <h2>Interactive Playgrounds</h2>
+        <div class="card-grid">
+          <a class="card" href="/pages/compute-patterns.html#playground-load-balancing">
+            <h3>Load balancing distribution</h3>
+            <p>See how strategy choice shifts traffic and hot spots.</p>
+          </a>
+          <a class="card" href="/pages/networking-patterns.html#playground-retries">
+            <h3>Retry storms</h3>
+            <p>Model failure rates and retry amplification in real time.</p>
+          </a>
+          <a class="card" href="/pages/kubernetes-patterns.html#playground-hpa">
+            <h3>Autoscaling response</h3>
+            <p>Explore how HPA reacts to load and limits.</p>
+          </a>
+          <a class="card" href="/pages/database-architectures.html#playground-sharding">
+            <h3>Shard skew</h3>
+            <p>Visualize uneven keys and their impact on partitions.</p>
+          </a>
+          <a class="card" href="/pages/consistency-models.html#playground-quorums">
+            <h3>Quorum budgets</h3>
+            <p>Balance read and write quorums for desired guarantees.</p>
+          </a>
+          <a class="card" href="/pages/system-design-patterns.html#playground-rate-limits">
+            <h3>Rate limiter behavior</h3>
+            <p>Understand burst handling and throttling thresholds.</p>
+          </a>
+        </div>
+      </section>
+
+      <section>
+        <h2>How to Use This Guide</h2>
+        <ul>
+          <li>Start with compute patterns to align on workload and scaling primitives.</li>
+          <li>Use the storage and consistency pages to reason about data trade-offs.</li>
+          <li>Cross-link into networking and Kubernetes when you need operational detail.</li>
+        </ul>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div>Built for senior engineers and system designers.</div>
+      <div>Distributed Systems Visual Guide.</div>
+    </footer>
+  </body>
+</html>

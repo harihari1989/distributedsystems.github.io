@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en" data-color-mode="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kubernetes Patterns | Distributed Systems Visual Guide</title>
+    <link rel="stylesheet" href="/assets/css/theme.css" />
+    <script defer src="/assets/js/toggleTheme.js"></script>
+    <script defer src="/assets/js/site.js"></script>
+    <script defer src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script defer src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script defer src="/assets/js/playgrounds.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script defer src="/assets/js/mermaid-init.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-brand">
+        <a href="/">Distributed Systems Visual Guide</a>
+      </div>
+      <nav class="site-nav">
+        <a href="/">Home</a>
+        <a href="/pages/compute-patterns.html">Compute</a>
+        <a href="/pages/database-architectures.html">Storage</a>
+        <a href="/pages/consistency-models.html">Consistency</a>
+        <a href="/pages/networking-patterns.html">Networking</a>
+        <a href="/pages/kubernetes-patterns.html" class="is-active" aria-current="page">Kubernetes</a>
+        <a href="/pages/system-design-patterns.html">Interview</a>
+      </nav>
+      <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
+    </header>
+    <main>
+      <h1>Kubernetes Patterns</h1>
+
+      <section>
+        <h2>Why this problem exists</h2>
+        <p>
+          Modern distributed systems need repeatable deployment, scaling, and recovery without bespoke automation per service.
+          Kubernetes abstracts the infrastructure layer so teams can standardize scheduling, rollout, and service discovery.
+          Patterns emerge to make those primitives safe at scale and to avoid fragile, ad hoc operational playbooks.
+        </p>
+      </section>
+
+      <section>
+        <h2>Core idea / pattern</h2>
+        <h3>Pods, services, and ingress</h3>
+        <p>
+          Pods are the smallest schedulable unit and encapsulate one or more tightly coupled containers.
+          Services provide stable virtual IPs and discovery for ephemeral pods.
+          Ingress exposes services externally and centralizes TLS termination and routing.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Component</th>
+              <th>Role</th>
+              <th>Strengths</th>
+              <th>Risks</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Pod</td>
+              <td>Co-scheduled containers with shared network</td>
+              <td>Tight coupling, shared volumes</td>
+              <td>Coupled failure domain</td>
+            </tr>
+            <tr>
+              <td>Service</td>
+              <td>Stable name + load balancing</td>
+              <td>Decouples clients from pods</td>
+              <td>Misconfigured selectors cause blackholes</td>
+            </tr>
+            <tr>
+              <td>Ingress</td>
+              <td>External routing and TLS</td>
+              <td>Centralized policy</td>
+              <td>Single critical layer if unscaled</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Sidecar pattern</h3>
+        <p>
+          Sidecars add cross-cutting concerns such as mTLS, logging, or rate limiting without changing app code.
+          This pattern enables consistent policy but increases resource usage and operational complexity.
+          See <a href="/pages/networking-patterns.html">networking patterns</a> for gateway and mesh details.
+        </p>
+
+        <h3>Operators and controllers</h3>
+        <p>
+          Controllers reconcile desired state to actual state, making systems self-healing.
+          Operators extend this with domain-specific automation such as backups or failover.
+          The reconciliation loop is the core reliability mechanic, not an optional detail.
+        </p>
+
+        <h3>Autoscaling</h3>
+        <p>
+          Horizontal Pod Autoscaler (HPA) scales replica counts based on metrics like CPU or custom signals.
+          Vertical Pod Autoscaler (VPA) adjusts resource requests and limits to fit observed usage.
+          Autoscaling depends on accurate metrics and sane limits to avoid oscillation.
+        </p>
+      </section>
+
+      <section>
+        <h2>Architecture diagram</h2>
+        <pre class="mermaid">
+flowchart LR
+  Client[Client] --> Ingress[Ingress]
+  Ingress --> Svc[Service]
+  Svc --> PodA[Pod A]
+  Svc --> PodB[Pod B]
+  PodA --> SidecarA[Sidecar]
+  PodB --> SidecarB[Sidecar]
+  Controller[Controller] --> Deploy[Deployment]
+  Deploy --> PodA
+  Deploy --> PodB
+        </pre>
+      </section>
+
+      <section>
+        <h2>Step-by-step flow</h2>
+        <ol>
+          <li>A client connects to the ingress endpoint over TLS.</li>
+          <li>Ingress routes the request to a service based on hostname and path.</li>
+          <li>The service load balances across healthy pod endpoints.</li>
+          <li>The sidecar enforces mTLS or policy before the app container handles the request.</li>
+          <li>Controllers observe desired state and replace unhealthy pods automatically.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2 id="playground-hpa">Playground: Autoscaling response</h2>
+        <div id="playground-hpa-root"></div>
+      </section>
+
+      <section>
+        <h2>Failure modes</h2>
+        <ul>
+          <li>Misconfigured readiness probes route traffic to unhealthy pods.</li>
+          <li>Ingress or service selectors drift from labels, causing traffic drops.</li>
+          <li>Sidecars crash-loop and block app traffic, creating partial outages.</li>
+          <li>HPA scales on noisy metrics and causes oscillation or thundering herds.</li>
+          <li>Resource limits are too low, leading to OOM kills and instability.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Trade-offs</h2>
+        <ul>
+          <li>Kubernetes reduces manual ops but increases platform complexity and learning cost.</li>
+          <li>Sidecars centralize policy but add CPU and memory overhead.</li>
+          <li>Operators automate complex workflows but can hide critical domain assumptions.</li>
+          <li>HPA improves responsiveness but can amplify load spikes without backpressure.</li>
+          <li>Ingress centralizes routing but can become a bottleneck if underprovisioned.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Real-world usage</h2>
+        <ul>
+          <li>Production clusters commonly use NGINX or Envoy-based ingress controllers.</li>
+          <li>Service meshes such as Istio or Linkerd deploy sidecars for mTLS and routing.</li>
+          <li>Operators manage databases like PostgreSQL or Kafka with custom failover logic.</li>
+          <li>Autoscaling pairs HPA with cluster autoscalers to add nodes as load grows.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Interview tips</h2>
+        <ul>
+          <li>Start with pod and service roles before introducing ingress and sidecars.</li>
+          <li>Explain how health checks and probes protect user traffic.</li>
+          <li>Discuss rollout strategies like canary and blue-green with safe rollback.</li>
+          <li>Tie autoscaling to metrics quality and cost constraints.</li>
+          <li>Mention how you avoid noisy-neighbor and resource starvation issues.</li>
+        </ul>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div>Built for senior engineers and system designers.</div>
+      <div>Distributed Systems Visual Guide.</div>
+    </footer>
+  </body>
+</html>

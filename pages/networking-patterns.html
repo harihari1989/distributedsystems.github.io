@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en" data-color-mode="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Networking Patterns | Distributed Systems Visual Guide</title>
+    <link rel="stylesheet" href="/assets/css/theme.css" />
+    <script defer src="/assets/js/toggleTheme.js"></script>
+    <script defer src="/assets/js/site.js"></script>
+    <script defer src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script defer src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script defer src="/assets/js/playgrounds.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script defer src="/assets/js/mermaid-init.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-brand">
+        <a href="/">Distributed Systems Visual Guide</a>
+      </div>
+      <nav class="site-nav">
+        <a href="/">Home</a>
+        <a href="/pages/compute-patterns.html">Compute</a>
+        <a href="/pages/database-architectures.html">Storage</a>
+        <a href="/pages/consistency-models.html">Consistency</a>
+        <a href="/pages/networking-patterns.html" class="is-active" aria-current="page">Networking</a>
+        <a href="/pages/kubernetes-patterns.html">Kubernetes</a>
+        <a href="/pages/system-design-patterns.html">Interview</a>
+      </nav>
+      <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
+    </header>
+    <main>
+      <h1>Networking Patterns</h1>
+
+      <section>
+        <h2>Why this problem exists</h2>
+        <p>
+          Distributed systems move across dynamic networks where service instances appear, disappear, and relocate.
+          Clients and services need stable discovery, safe routing, and policy enforcement without assuming static IPs.
+          Networking patterns provide repeatable ways to route traffic, manage protocol choices, and prevent cascading failures.
+        </p>
+      </section>
+
+      <section>
+        <h2>Core idea / pattern</h2>
+        <h3>Service discovery</h3>
+        <p>
+          Service discovery provides a stable name that resolves to healthy instances as the fleet changes.
+          Patterns include DNS-based discovery, client-side discovery with a registry, and server-side discovery via a load balancer.
+          Discovery choices interact with scaling behavior discussed in <a href="/pages/compute-patterns.html">compute patterns</a>.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Pattern</th>
+              <th>How it works</th>
+              <th>Strengths</th>
+              <th>Risks</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>DNS-based</td>
+              <td>DNS returns multiple A/AAAA records</td>
+              <td>Simple, ubiquitous caching</td>
+              <td>Slow propagation, coarse health visibility</td>
+            </tr>
+            <tr>
+              <td>Client-side</td>
+              <td>Client queries registry then selects instance</td>
+              <td>Fine-grained routing, fast rebalancing</td>
+              <td>Client complexity, uneven upgrades</td>
+            </tr>
+            <tr>
+              <td>Server-side</td>
+              <td>Load balancer resolves and routes</td>
+              <td>Centralized policy, simpler clients</td>
+              <td>Proxy adds latency and failure domain</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Reverse proxies and API gateways</h3>
+        <p>
+          Reverse proxies terminate client connections and forward requests to upstream services.
+          API gateways add routing, auth, rate limits, and request shaping at the edge.
+          These patterns centralize cross-cutting concerns but create a critical dependency layer.
+        </p>
+
+        <h3>gRPC vs REST</h3>
+        <p>
+          REST over HTTP is easy to adopt and debuggable, making it a common external interface.
+          gRPC uses HTTP/2 and strongly typed schemas for efficient internal communication.
+          Pick interfaces based on client diversity and latency sensitivity, and link protocol choices to your SLA.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Attribute</th>
+              <th>REST</th>
+              <th>gRPC</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Serialization</td>
+              <td>JSON or text</td>
+              <td>Protobuf</td>
+            </tr>
+            <tr>
+              <td>Client support</td>
+              <td>Broad, browser-friendly</td>
+              <td>Strong in backend-to-backend</td>
+            </tr>
+            <tr>
+              <td>Streaming</td>
+              <td>Limited via SSE/WebSocket</td>
+              <td>First-class bidi streams</td>
+            </tr>
+            <tr>
+              <td>Compatibility</td>
+              <td>Loose versioning</td>
+              <td>Strict schema evolution</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Backpressure and flow control</h3>
+        <p>
+          Backpressure protects upstream services when downstream services are saturated.
+          Mechanisms include queue limits, circuit breakers, and token-bucket rate limiting.
+          See <a href="/pages/system-design-patterns.html">system design interview patterns</a> for rate limiting and circuit breakers.
+        </p>
+      </section>
+
+      <section>
+        <h2>Architecture diagram</h2>
+        <pre class="mermaid">
+flowchart LR
+  Client[Client] --> DNS[Service DNS]
+  DNS --> Edge[API Gateway]
+  Edge --> Proxy[Reverse Proxy]
+  Proxy --> Mesh[Service Mesh]
+  Mesh --> SvcA[Service A]
+  Mesh --> SvcB[Service B]
+  SvcA --> Registry[(Service Registry)]
+  SvcB --> Registry
+        </pre>
+      </section>
+
+      <section>
+        <h2>Step-by-step flow</h2>
+        <ol>
+          <li>The client resolves the service name through DNS and connects to the gateway.</li>
+          <li>The gateway authenticates the request and applies global rate limits.</li>
+          <li>A reverse proxy forwards the request to a service mesh or load balancer.</li>
+          <li>The mesh routes to a healthy instance based on discovery data.</li>
+          <li>The service replies, and headers or traces are added for observability.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2 id="playground-retries">Playground: Retry storms and backpressure</h2>
+        <div id="playground-retries-root"></div>
+      </section>
+
+      <section>
+        <h2>Failure modes</h2>
+        <ul>
+          <li>Stale discovery data sends traffic to dead instances, causing spikes in retries.</li>
+          <li>Overloaded gateways or proxies become bottlenecks and amplify tail latency.</li>
+          <li>Misconfigured TLS or routing rules break canary traffic and cause partial outages.</li>
+          <li>Retry storms increase load and create feedback loops without backoff or budgets.</li>
+          <li>Inconsistent timeouts between layers cause slow drain and resource exhaustion.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Trade-offs</h2>
+        <ul>
+          <li>Centralized gateways simplify policy enforcement but increase critical-path dependencies.</li>
+          <li>Client-side discovery improves responsiveness at scale but increases client complexity.</li>
+          <li>gRPC provides efficient internal calls but reduces interoperability with browsers.</li>
+          <li>Aggressive retries improve success rates but increase p99 latency and load.</li>
+          <li>Service meshes improve observability and mTLS but add operational overhead.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Real-world usage</h2>
+        <ul>
+          <li>Edge gateways like Envoy, NGINX, or Kong front API traffic and enforce policy.</li>
+          <li>Service meshes such as Istio or Linkerd manage mTLS and routing inside clusters.</li>
+          <li>DNS-based discovery is common in Kubernetes via CoreDNS; see <a href="/pages/kubernetes-patterns.html">Kubernetes patterns</a>.</li>
+          <li>gRPC is common for internal RPC while REST remains common for public APIs.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Interview tips</h2>
+        <ul>
+          <li>Start with the request path and identify where policy and routing should live.</li>
+          <li>Call out discovery and health checks before discussing retries and timeouts.</li>
+          <li>Explain how you prevent retry storms and protect downstream services.</li>
+          <li>Tie protocol choice to client ecosystem and latency requirements.</li>
+          <li>Mention how you would instrument traces and metrics at the gateway and mesh.</li>
+        </ul>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div>Built for senior engineers and system designers.</div>
+      <div>Distributed Systems Visual Guide.</div>
+    </footer>
+  </body>
+</html>
