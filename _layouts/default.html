@@ -14,12 +14,12 @@
         <a href="{{ "/" | relative_url }}">Distributed Systems Visual Guide</a>
       </div>
       <nav class="site-nav">
-        <a href="{{ "/pages/compute-patterns/" | relative_url }}">Compute</a>
-        <a href="{{ "/pages/database-architectures/" | relative_url }}">Storage</a>
-        <a href="{{ "/pages/consistency-models/" | relative_url }}">Consistency</a>
-        <a href="{{ "/pages/networking-patterns/" | relative_url }}">Networking</a>
-        <a href="{{ "/pages/kubernetes-patterns/" | relative_url }}">Kubernetes</a>
-        <a href="{{ "/pages/system-design-patterns/" | relative_url }}">Interview</a>
+        <a href="{{ "/pages/compute-patterns/" | relative_url }}" class="{% if page.url == '/pages/compute-patterns/' %}is-active{% endif %}">Compute</a>
+        <a href="{{ "/pages/database-architectures/" | relative_url }}" class="{% if page.url == '/pages/database-architectures/' %}is-active{% endif %}">Storage</a>
+        <a href="{{ "/pages/consistency-models/" | relative_url }}" class="{% if page.url == '/pages/consistency-models/' %}is-active{% endif %}">Consistency</a>
+        <a href="{{ "/pages/networking-patterns/" | relative_url }}" class="{% if page.url == '/pages/networking-patterns/' %}is-active{% endif %}">Networking</a>
+        <a href="{{ "/pages/kubernetes-patterns/" | relative_url }}" class="{% if page.url == '/pages/kubernetes-patterns/' %}is-active{% endif %}">Kubernetes</a>
+        <a href="{{ "/pages/system-design-patterns/" | relative_url }}" class="{% if page.url == '/pages/system-design-patterns/' %}is-active{% endif %}">Interview</a>
       </nav>
       <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
     </header>

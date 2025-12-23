@@ -63,6 +63,10 @@ body {
   border-bottom-color: currentColor;
 }
 
+.site-nav a.is-active {
+  border-bottom-color: currentColor;
+}
+
 .theme-toggle {
   justify-self: start;
   border: 1px solid currentColor;
