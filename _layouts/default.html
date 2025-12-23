@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en" data-color-mode="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ page.title }} | {{ site.title }}</title>
+    <link rel="stylesheet" href="{{ "/assets/css/theme.css" | relative_url }}" />
+    <script defer src="{{ "/assets/js/toggleTheme.js" | relative_url }}"></script>
+    <script defer src="{{ "/assets/js/diagrams.js" | relative_url }}"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-brand">
+        <a href="{{ "/" | relative_url }}">Distributed Systems Visual Guide</a>
+      </div>
+      <nav class="site-nav">
+        <a href="{{ "/pages/compute-patterns/" | relative_url }}">Compute</a>
+        <a href="{{ "/pages/database-architectures/" | relative_url }}">Storage</a>
+        <a href="{{ "/pages/consistency-models/" | relative_url }}">Consistency</a>
+        <a href="{{ "/pages/networking-patterns/" | relative_url }}">Networking</a>
+        <a href="{{ "/pages/kubernetes-patterns/" | relative_url }}">Kubernetes</a>
+        <a href="{{ "/pages/system-design-patterns/" | relative_url }}">Interview</a>
+      </nav>
+      <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
+    </header>
+    <main>
+      {{ content }}
+    </main>
+    <footer class="site-footer">
+      <div>Built for senior engineers and system designers.</div>
+      <div>Distributed Systems Visual Guide.</div>
+    </footer>
+  </body>
+</html>

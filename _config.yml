@@ -1,0 +1,8 @@
+title: Distributed Systems Visual Guide
+description: Professional-grade, visual guide to distributed systems and system design.
+markdown: kramdown
+kramdown:
+  input: GFM
+  hard_wrap: false
+permalink: pretty
+# TODO: set url and baseurl for GitHub Pages deployment.
