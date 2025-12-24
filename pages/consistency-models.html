@@ -4,28 +4,28 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Consistency Models | Distributed Systems Visual Guide</title>
-    <link rel="stylesheet" href="/assets/css/theme.css" />
-    <script defer src="/assets/js/toggleTheme.js"></script>
-    <script defer src="/assets/js/site.js"></script>
+    <link rel="stylesheet" href="../assets/css/theme.css" />
+    <script defer src="../assets/js/toggleTheme.js"></script>
+    <script defer src="../assets/js/site.js"></script>
     <script defer src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script defer src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script defer src="/assets/js/playgrounds.js"></script>
+    <script defer src="../assets/js/playgrounds.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-    <script defer src="/assets/js/mermaid-init.js"></script>
+    <script defer src="../assets/js/mermaid-init.js"></script>
   </head>
   <body>
     <header class="site-header">
       <div class="site-brand">
-        <a href="/">Distributed Systems Visual Guide</a>
+        <a href="../index.html">Distributed Systems Visual Guide</a>
       </div>
       <nav class="site-nav">
-        <a href="/">Home</a>
-        <a href="/pages/compute-patterns.html">Compute</a>
-        <a href="/pages/database-architectures.html">Storage</a>
-        <a href="/pages/consistency-models.html" class="is-active" aria-current="page">Consistency</a>
-        <a href="/pages/networking-patterns.html">Networking</a>
-        <a href="/pages/kubernetes-patterns.html">Kubernetes</a>
-        <a href="/pages/system-design-patterns.html">Interview</a>
+        <a href="../index.html">Home</a>
+        <a href="compute-patterns.html">Compute</a>
+        <a href="database-architectures.html">Storage</a>
+        <a href="consistency-models.html" class="is-active" aria-current="page">Consistency</a>
+        <a href="networking-patterns.html">Networking</a>
+        <a href="kubernetes-patterns.html">Kubernetes</a>
+        <a href="system-design-patterns.html">Interview</a>
       </nav>
       <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
     </header>
@@ -103,6 +103,39 @@ sequenceDiagram
   Client->>Replica2: Read x
   Replica2-->>Client: x=1
         </pre>
+      </section>
+
+      <section>
+        <h2>Animated flow</h2>
+        <div class="viz">
+          <svg viewBox="0 0 820 220" role="img" aria-label="Animated write propagation from leader to replicas with a read response.">
+            <rect class="node pulse" x="40" y="60" width="140" height="60" rx="14"></rect>
+            <text x="72" y="95">Leader</text>
+
+            <rect class="node pulse-slow" x="320" y="30" width="160" height="60" rx="14"></rect>
+            <text x="350" y="65">Replica 1</text>
+
+            <rect class="node pulse-slow" x="320" y="120" width="160" height="60" rx="14"></rect>
+            <text x="350" y="155">Replica 2</text>
+
+            <rect class="node" x="600" y="120" width="160" height="60" rx="14"></rect>
+            <text x="635" y="155">Client</text>
+
+            <path class="edge flow" d="M180 90 L320 60"></path>
+            <path class="edge flow" d="M180 90 L320 150"></path>
+            <path class="edge flow" d="M480 150 L600 150"></path>
+
+            <circle class="packet" r="4">
+              <animateMotion dur="3.6s" repeatCount="indefinite" path="M180 90 L320 60"></animateMotion>
+            </circle>
+            <circle class="packet" r="4">
+              <animateMotion dur="4.2s" begin="0.8s" repeatCount="indefinite" path="M180 90 L320 150"></animateMotion>
+            </circle>
+            <circle class="packet" r="4">
+              <animateMotion dur="3.2s" begin="1.2s" repeatCount="indefinite" path="M480 150 L600 150"></animateMotion>
+            </circle>
+          </svg>
+        </div>
       </section>
 
       <section>

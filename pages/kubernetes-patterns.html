@@ -4,33 +4,43 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Kubernetes Patterns | Distributed Systems Visual Guide</title>
-    <link rel="stylesheet" href="/assets/css/theme.css" />
-    <script defer src="/assets/js/toggleTheme.js"></script>
-    <script defer src="/assets/js/site.js"></script>
+    <link rel="stylesheet" href="../assets/css/theme.css" />
+    <script defer src="../assets/js/toggleTheme.js"></script>
+    <script defer src="../assets/js/site.js"></script>
     <script defer src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script defer src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script defer src="/assets/js/playgrounds.js"></script>
+    <script defer src="../assets/js/playgrounds.js"></script>
+    <script defer src="../assets/js/k8s-explorer.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-    <script defer src="/assets/js/mermaid-init.js"></script>
+    <script defer src="../assets/js/mermaid-init.js"></script>
   </head>
   <body>
     <header class="site-header">
       <div class="site-brand">
-        <a href="/">Distributed Systems Visual Guide</a>
+        <a href="../index.html">Distributed Systems Visual Guide</a>
       </div>
       <nav class="site-nav">
-        <a href="/">Home</a>
-        <a href="/pages/compute-patterns.html">Compute</a>
-        <a href="/pages/database-architectures.html">Storage</a>
-        <a href="/pages/consistency-models.html">Consistency</a>
-        <a href="/pages/networking-patterns.html">Networking</a>
-        <a href="/pages/kubernetes-patterns.html" class="is-active" aria-current="page">Kubernetes</a>
-        <a href="/pages/system-design-patterns.html">Interview</a>
+        <a href="../index.html">Home</a>
+        <a href="compute-patterns.html">Compute</a>
+        <a href="database-architectures.html">Storage</a>
+        <a href="consistency-models.html">Consistency</a>
+        <a href="networking-patterns.html">Networking</a>
+        <a href="kubernetes-patterns.html" class="is-active" aria-current="page">Kubernetes</a>
+        <a href="system-design-patterns.html">Interview</a>
       </nav>
       <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
     </header>
     <main>
       <h1>Kubernetes Patterns</h1>
+
+      <section id="k8s-explorer">
+        <h2>Visual Kubernetes Architecture Explorer</h2>
+        <p>
+          Stop memorizing Kubernetes. Watch it think.
+          This explorer turns controllers, state reconciliation, and network flows into animated systems you can pause, step, and probe.
+        </p>
+        <div id="k8s-explorer-root"></div>
+      </section>
 
       <section>
         <h2>Why this problem exists</h2>
@@ -85,7 +95,7 @@
         <p>
           Sidecars add cross-cutting concerns such as mTLS, logging, or rate limiting without changing app code.
           This pattern enables consistent policy but increases resource usage and operational complexity.
-          See <a href="/pages/networking-patterns.html">networking patterns</a> for gateway and mesh details.
+          See <a href="networking-patterns.html">networking patterns</a> for gateway and mesh details.
         </p>
 
         <h3>Operators and controllers</h3>
@@ -117,6 +127,44 @@ flowchart LR
   Deploy --> PodA
   Deploy --> PodB
         </pre>
+      </section>
+
+      <section>
+        <h2>Animated flow</h2>
+        <div class="viz">
+          <svg viewBox="0 0 820 240" role="img" aria-label="Animated Kubernetes flow from ingress to services and pods.">
+            <rect class="node pulse" x="30" y="90" width="120" height="60" rx="14"></rect>
+            <text x="54" y="125">Ingress</text>
+
+            <rect class="node" x="200" y="90" width="120" height="60" rx="14"></rect>
+            <text x="224" y="125">Service</text>
+
+            <rect class="node pulse" x="380" y="40" width="140" height="60" rx="14"></rect>
+            <text x="410" y="75">Pod A</text>
+
+            <rect class="node pulse-slow" x="380" y="130" width="140" height="60" rx="14"></rect>
+            <text x="410" y="165">Pod B</text>
+
+            <rect class="node" x="580" y="40" width="180" height="60" rx="14"></rect>
+            <text x="610" y="75">Sidecar</text>
+
+            <rect class="node" x="580" y="130" width="180" height="60" rx="14"></rect>
+            <text x="610" y="165">Sidecar</text>
+
+            <path class="edge flow" d="M150 120 L200 120"></path>
+            <path class="edge flow" d="M320 120 L380 70"></path>
+            <path class="edge flow" d="M320 120 L380 160"></path>
+            <path class="edge flow" d="M520 70 L580 70"></path>
+            <path class="edge flow" d="M520 160 L580 160"></path>
+
+            <circle class="packet" r="4">
+              <animateMotion dur="3.8s" repeatCount="indefinite" path="M150 120 L200 120 L380 70 L580 70"></animateMotion>
+            </circle>
+            <circle class="packet" r="4">
+              <animateMotion dur="4.4s" begin="1s" repeatCount="indefinite" path="M150 120 L200 120 L380 160 L580 160"></animateMotion>
+            </circle>
+          </svg>
+        </div>
       </section>
 
       <section>

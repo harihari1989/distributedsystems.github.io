@@ -4,28 +4,28 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>System Design Interview Patterns | Distributed Systems Visual Guide</title>
-    <link rel="stylesheet" href="/assets/css/theme.css" />
-    <script defer src="/assets/js/toggleTheme.js"></script>
-    <script defer src="/assets/js/site.js"></script>
+    <link rel="stylesheet" href="../assets/css/theme.css" />
+    <script defer src="../assets/js/toggleTheme.js"></script>
+    <script defer src="../assets/js/site.js"></script>
     <script defer src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script defer src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script defer src="/assets/js/playgrounds.js"></script>
+    <script defer src="../assets/js/playgrounds.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-    <script defer src="/assets/js/mermaid-init.js"></script>
+    <script defer src="../assets/js/mermaid-init.js"></script>
   </head>
   <body>
     <header class="site-header">
       <div class="site-brand">
-        <a href="/">Distributed Systems Visual Guide</a>
+        <a href="../index.html">Distributed Systems Visual Guide</a>
       </div>
       <nav class="site-nav">
-        <a href="/">Home</a>
-        <a href="/pages/compute-patterns.html">Compute</a>
-        <a href="/pages/database-architectures.html">Storage</a>
-        <a href="/pages/consistency-models.html">Consistency</a>
-        <a href="/pages/networking-patterns.html">Networking</a>
-        <a href="/pages/kubernetes-patterns.html">Kubernetes</a>
-        <a href="/pages/system-design-patterns.html" class="is-active" aria-current="page">Interview</a>
+        <a href="../index.html">Home</a>
+        <a href="compute-patterns.html">Compute</a>
+        <a href="database-architectures.html">Storage</a>
+        <a href="consistency-models.html">Consistency</a>
+        <a href="networking-patterns.html">Networking</a>
+        <a href="kubernetes-patterns.html">Kubernetes</a>
+        <a href="system-design-patterns.html" class="is-active" aria-current="page">Interview</a>
       </nav>
       <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
     </header>
@@ -71,7 +71,7 @@
         <p>
           Rate limiting shapes traffic to protect downstream services.
           Circuit breakers fail fast when dependencies are unhealthy to prevent cascading failure.
-          See <a href="/pages/networking-patterns.html">networking patterns</a> for backpressure context.
+          See <a href="networking-patterns.html">networking patterns</a> for backpressure context.
         </p>
 
         <table>
@@ -125,6 +125,49 @@ flowchart LR
   Worker2 --> Store
   Store --> Replica[(Replica)]
         </pre>
+      </section>
+
+      <section>
+        <h2>Animated flow</h2>
+        <div class="viz">
+          <svg viewBox="0 0 900 240" role="img" aria-label="Animated request flow through rate limiter, queue, workers, and storage.">
+            <rect class="node pulse" x="20" y="90" width="120" height="60" rx="14"></rect>
+            <text x="50" y="125">Client</text>
+
+            <rect class="node" x="170" y="90" width="140" height="60" rx="14"></rect>
+            <text x="200" y="125">API</text>
+
+            <rect class="node" x="340" y="90" width="140" height="60" rx="14"></rect>
+            <text x="360" y="125">Limiter</text>
+
+            <rect class="node pulse-slow" x="510" y="90" width="120" height="60" rx="14"></rect>
+            <text x="540" y="125">Queue</text>
+
+            <rect class="node" x="660" y="40" width="140" height="60" rx="14"></rect>
+            <text x="690" y="75">Worker A</text>
+
+            <rect class="node" x="660" y="140" width="140" height="60" rx="14"></rect>
+            <text x="690" y="175">Worker B</text>
+
+            <rect class="node pulse" x="750" y="90" width="120" height="60" rx="14"></rect>
+            <text x="775" y="125">Store</text>
+
+            <path class="edge flow" d="M140 120 L170 120"></path>
+            <path class="edge flow" d="M310 120 L340 120"></path>
+            <path class="edge flow" d="M480 120 L510 120"></path>
+            <path class="edge flow" d="M630 120 L660 70"></path>
+            <path class="edge flow" d="M630 120 L660 170"></path>
+            <path class="edge flow" d="M800 70 L750 120"></path>
+            <path class="edge flow" d="M800 170 L750 120"></path>
+
+            <circle class="packet" r="4">
+              <animateMotion dur="3.8s" repeatCount="indefinite" path="M140 120 L170 120 L340 120 L510 120 L660 70 L750 120"></animateMotion>
+            </circle>
+            <circle class="packet" r="4">
+              <animateMotion dur="4.6s" begin="1s" repeatCount="indefinite" path="M140 120 L170 120 L340 120 L510 120 L660 170 L750 120"></animateMotion>
+            </circle>
+          </svg>
+        </div>
       </section>
 
       <section>

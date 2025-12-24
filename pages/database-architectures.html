@@ -4,28 +4,28 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Storage and Data Patterns | Distributed Systems Visual Guide</title>
-    <link rel="stylesheet" href="/assets/css/theme.css" />
-    <script defer src="/assets/js/toggleTheme.js"></script>
-    <script defer src="/assets/js/site.js"></script>
+    <link rel="stylesheet" href="../assets/css/theme.css" />
+    <script defer src="../assets/js/toggleTheme.js"></script>
+    <script defer src="../assets/js/site.js"></script>
     <script defer src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script defer src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script defer src="/assets/js/playgrounds.js"></script>
+    <script defer src="../assets/js/playgrounds.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-    <script defer src="/assets/js/mermaid-init.js"></script>
+    <script defer src="../assets/js/mermaid-init.js"></script>
   </head>
   <body>
     <header class="site-header">
       <div class="site-brand">
-        <a href="/">Distributed Systems Visual Guide</a>
+        <a href="../index.html">Distributed Systems Visual Guide</a>
       </div>
       <nav class="site-nav">
-        <a href="/">Home</a>
-        <a href="/pages/compute-patterns.html">Compute</a>
-        <a href="/pages/database-architectures.html" class="is-active" aria-current="page">Storage</a>
-        <a href="/pages/consistency-models.html">Consistency</a>
-        <a href="/pages/networking-patterns.html">Networking</a>
-        <a href="/pages/kubernetes-patterns.html">Kubernetes</a>
-        <a href="/pages/system-design-patterns.html">Interview</a>
+        <a href="../index.html">Home</a>
+        <a href="compute-patterns.html">Compute</a>
+        <a href="database-architectures.html" class="is-active" aria-current="page">Storage</a>
+        <a href="consistency-models.html">Consistency</a>
+        <a href="networking-patterns.html">Networking</a>
+        <a href="kubernetes-patterns.html">Kubernetes</a>
+        <a href="system-design-patterns.html">Interview</a>
       </nav>
       <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
     </header>
@@ -120,7 +120,7 @@
         <p>
           CAP highlights trade-offs during network partitions, not during healthy operation.
           Under partition, you typically pick availability with eventual consistency or strict consistency with reduced availability.
-          See <a href="/pages/consistency-models.html">consistency models</a> for precise guarantees.
+          See <a href="consistency-models.html">consistency models</a> for precise guarantees.
         </p>
       </section>
 
@@ -136,6 +136,52 @@ flowchart LR
   ShardB --> RepB1[Replica B1]
   ShardB --> RepB2[Replica B2]
         </pre>
+      </section>
+
+      <section>
+        <h2>Animated flow</h2>
+        <div class="viz">
+          <svg viewBox="0 0 860 300" role="img" aria-label="Animated sharding and replication flow across primaries and replicas.">
+            <rect class="node pulse" x="30" y="120" width="140" height="60" rx="14"></rect>
+            <text x="58" y="155">Router</text>
+
+            <rect class="node" x="230" y="50" width="140" height="60" rx="14"></rect>
+            <text x="255" y="85">Shard A</text>
+
+            <rect class="node" x="230" y="190" width="140" height="60" rx="14"></rect>
+            <text x="255" y="225">Shard B</text>
+
+            <rect class="node pulse-slow" x="440" y="20" width="150" height="60" rx="14"></rect>
+            <text x="468" y="55">Replica A1</text>
+
+            <rect class="node pulse-slow" x="440" y="90" width="150" height="60" rx="14"></rect>
+            <text x="468" y="125">Replica A2</text>
+
+            <rect class="node pulse-slow" x="440" y="170" width="150" height="60" rx="14"></rect>
+            <text x="468" y="205">Replica B1</text>
+
+            <rect class="node pulse-slow" x="440" y="240" width="150" height="60" rx="14"></rect>
+            <text x="468" y="275">Replica B2</text>
+
+            <rect class="node" x="650" y="100" width="170" height="80" rx="14"></rect>
+            <text x="690" y="145">Clients</text>
+
+            <path class="edge flow" d="M170 150 L230 80"></path>
+            <path class="edge flow" d="M170 150 L230 220"></path>
+            <path class="edge flow" d="M370 80 L440 50"></path>
+            <path class="edge flow" d="M370 80 L440 120"></path>
+            <path class="edge flow" d="M370 220 L440 200"></path>
+            <path class="edge flow" d="M370 220 L440 270"></path>
+            <path class="edge flow" d="M590 140 L650 140"></path>
+
+            <circle class="packet" r="4">
+              <animateMotion dur="4s" repeatCount="indefinite" path="M170 150 L230 80 L440 50"></animateMotion>
+            </circle>
+            <circle class="packet" r="4">
+              <animateMotion dur="4.6s" begin="1s" repeatCount="indefinite" path="M170 150 L230 220 L440 200"></animateMotion>
+            </circle>
+          </svg>
+        </div>
       </section>
 
       <section>

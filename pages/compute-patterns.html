@@ -4,28 +4,28 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Compute Patterns | Distributed Systems Visual Guide</title>
-    <link rel="stylesheet" href="/assets/css/theme.css" />
-    <script defer src="/assets/js/toggleTheme.js"></script>
-    <script defer src="/assets/js/site.js"></script>
+    <link rel="stylesheet" href="../assets/css/theme.css" />
+    <script defer src="../assets/js/toggleTheme.js"></script>
+    <script defer src="../assets/js/site.js"></script>
     <script defer src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script defer src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script defer src="/assets/js/playgrounds.js"></script>
+    <script defer src="../assets/js/playgrounds.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-    <script defer src="/assets/js/mermaid-init.js"></script>
+    <script defer src="../assets/js/mermaid-init.js"></script>
   </head>
   <body>
     <header class="site-header">
       <div class="site-brand">
-        <a href="/">Distributed Systems Visual Guide</a>
+        <a href="../index.html">Distributed Systems Visual Guide</a>
       </div>
       <nav class="site-nav">
-        <a href="/">Home</a>
-        <a href="/pages/compute-patterns.html" class="is-active" aria-current="page">Compute</a>
-        <a href="/pages/database-architectures.html">Storage</a>
-        <a href="/pages/consistency-models.html">Consistency</a>
-        <a href="/pages/networking-patterns.html">Networking</a>
-        <a href="/pages/kubernetes-patterns.html">Kubernetes</a>
-        <a href="/pages/system-design-patterns.html">Interview</a>
+        <a href="../index.html">Home</a>
+        <a href="compute-patterns.html" class="is-active" aria-current="page">Compute</a>
+        <a href="database-architectures.html">Storage</a>
+        <a href="consistency-models.html">Consistency</a>
+        <a href="networking-patterns.html">Networking</a>
+        <a href="kubernetes-patterns.html">Kubernetes</a>
+        <a href="system-design-patterns.html">Interview</a>
       </nav>
       <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
     </header>
@@ -47,7 +47,7 @@
         <p>
           Client-server centralizes control and simplifies coordination, but concentrates load and failure domains.
           Peer-to-peer distributes load and ownership, but requires more complex discovery and consistency management.
-          See <a href="/pages/networking-patterns.html">networking patterns</a> for discovery and routing trade-offs.
+          See <a href="networking-patterns.html">networking patterns</a> for discovery and routing trade-offs.
         </p>
 
         <h3>Stateless vs stateful services</h3>
@@ -55,7 +55,7 @@
           Stateless services keep request state out of the service process, enabling quick replacement and elastic scaling.
           Stateful services keep session or durable state locally, enabling low-latency access at the cost of more complex failover.
           State placement interacts with replication and consistency decisions in
-          <a href="/pages/database-architectures.html">storage and data patterns</a>.
+          <a href="database-architectures.html">storage and data patterns</a>.
         </p>
 
         <table>
@@ -101,7 +101,7 @@
         <p>
           Load balancing spreads requests across replicas using round-robin, least-connections, or latency-aware routing.
           L7 balancing enables routing by request attributes, but adds CPU cost and state in the proxy layer.
-          For gateway and proxy details, see <a href="/pages/networking-patterns.html">networking patterns</a>.
+          For gateway and proxy details, see <a href="networking-patterns.html">networking patterns</a>.
         </p>
       </section>
 
@@ -117,6 +117,45 @@ flowchart LR
   S2 --> Cache
   Cache --> DB[(Stateful Store)]
         </pre>
+      </section>
+
+      <section>
+        <h2>Animated flow</h2>
+        <div class="viz">
+          <svg viewBox="0 0 800 240" role="img" aria-label="Animated request flow across clients, load balancer, services, cache, and database.">
+            <rect class="node pulse" x="30" y="90" width="120" height="60" rx="14"></rect>
+            <text x="45" y="125">Clients</text>
+
+            <rect class="node" x="200" y="90" width="120" height="60" rx="14"></rect>
+            <text x="220" y="125">Load balancer</text>
+
+            <rect class="node pulse" x="370" y="50" width="120" height="60" rx="14"></rect>
+            <text x="390" y="85">Service A</text>
+
+            <rect class="node pulse-slow" x="370" y="130" width="120" height="60" rx="14"></rect>
+            <text x="390" y="165">Service B</text>
+
+            <rect class="node" x="540" y="90" width="120" height="60" rx="14"></rect>
+            <text x="565" y="125">Cache</text>
+
+            <rect class="node" x="690" y="80" width="90" height="80" rx="14"></rect>
+            <text x="708" y="120">DB</text>
+
+            <path class="edge flow" d="M150 120 L200 120"></path>
+            <path class="edge flow" d="M320 120 L370 80"></path>
+            <path class="edge flow" d="M320 120 L370 160"></path>
+            <path class="edge flow" d="M490 80 L540 120"></path>
+            <path class="edge flow" d="M490 160 L540 120"></path>
+            <path class="edge flow" d="M660 120 L690 120"></path>
+
+            <circle class="packet" r="4">
+              <animateMotion dur="4s" repeatCount="indefinite" path="M150 120 L200 120 L370 80 L540 120 L690 120"></animateMotion>
+            </circle>
+            <circle class="packet" r="4">
+              <animateMotion dur="4.8s" begin="1.2s" repeatCount="indefinite" path="M150 120 L200 120 L370 160 L540 120 L690 120"></animateMotion>
+            </circle>
+          </svg>
+        </div>
       </section>
 
       <section>
@@ -162,7 +201,7 @@ flowchart LR
           <li>Web frontends and API layers are typically stateless behind L7 load balancers like Envoy or NGINX.</li>
           <li>Stateful services include databases, queues, and session stores that require replication and sharding.</li>
           <li>Peer-to-peer patterns appear in BitTorrent-style distribution and WebRTC meshes.</li>
-          <li>Autoscaling patterns are often implemented with Kubernetes HPA in <a href="/pages/kubernetes-patterns.html">Kubernetes patterns</a>.</li>
+          <li>Autoscaling patterns are often implemented with Kubernetes HPA in <a href="kubernetes-patterns.html">Kubernetes patterns</a>.</li>
         </ul>
       </section>
 
