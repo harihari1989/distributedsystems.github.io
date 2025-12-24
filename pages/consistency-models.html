@@ -22,10 +22,11 @@
         <a href="../index.html">Home</a>
         <a href="compute-patterns.html">Compute</a>
         <a href="database-architectures.html">Storage</a>
+        <a href="database-patterns.html">Databases</a>
         <a href="consistency-models.html" class="is-active" aria-current="page">Consistency</a>
         <a href="networking-patterns.html">Networking</a>
         <a href="kubernetes-patterns.html">Kubernetes</a>
-        <a href="system-design-patterns.html">Interview</a>
+        <a href="operating-systems.html">Operating Systems</a>
       </nav>
       <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
     </header>
@@ -33,7 +34,7 @@
       <h1>Consistency Models</h1>
 
       <section>
-        <h2>Why this problem exists</h2>
+        <h2>Problem framing</h2>
         <p>
           Distributed systems replicate state for availability and scale, but replication introduces divergence.
           Consistency models define what clients can assume about reads relative to writes.
@@ -183,17 +184,6 @@ sequenceDiagram
           <li>Dynamo-style systems and Cassandra often favor eventual consistency with tunable quorums.</li>
           <li>Redis and caching layers frequently use eventual or session consistency for speed.</li>
           <li>Multi-region systems often offer configurable consistency tiers per request.</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>Interview tips</h2>
-        <ul>
-          <li>Start by stating the required user-visible guarantees, not the database name.</li>
-          <li>Explain the trade-off between latency and correctness for the workload.</li>
-          <li>Mention how quorum settings map to consistency and availability.</li>
-          <li>Call out conflict resolution strategy when using eventual consistency.</li>
-          <li>Tie consistency choices to failure handling and recovery expectations.</li>
         </ul>
       </section>
     </main>

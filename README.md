@@ -1,6 +1,6 @@
 # Distributed Systems Visual Guide
 
-An interactive GitHub Pages site for distributed systems patterns, interview prep, and real-world architecture reference.
+An interactive GitHub Pages site for distributed systems patterns and real-world architecture reference.
 Content lives in HTML pages under `pages/` and uses Mermaid plus React playgrounds for hands-on intuition.
 
 ## Structure

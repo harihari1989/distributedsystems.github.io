@@ -22,10 +22,11 @@
         <a href="../index.html">Home</a>
         <a href="compute-patterns.html">Compute</a>
         <a href="database-architectures.html" class="is-active" aria-current="page">Storage</a>
+        <a href="database-patterns.html">Databases</a>
         <a href="consistency-models.html">Consistency</a>
         <a href="networking-patterns.html">Networking</a>
         <a href="kubernetes-patterns.html">Kubernetes</a>
-        <a href="system-design-patterns.html">Interview</a>
+        <a href="operating-systems.html">Operating Systems</a>
       </nav>
       <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
     </header>
@@ -33,7 +34,7 @@
       <h1>Storage and Data Patterns</h1>
 
       <section>
-        <h2>Why this problem exists</h2>
+        <h2>Problem framing</h2>
         <p>
           Data systems must survive failures, scale throughput, and keep latency predictable under uneven access.
           Replication protects availability and durability, while sharding distributes load across nodes.
@@ -82,6 +83,7 @@
           SQL systems emphasize schema, transactions, and strong consistency within a single logical database.
           NoSQL systems trade rigid schemas and cross-entity transactions for scale and flexible access patterns.
           The real decision is workload fit, not ideology; use the smallest model that meets the SLA.
+          For data model selection, see <a href="database-patterns.html">database patterns</a>.
         </p>
 
         <table>
@@ -229,17 +231,6 @@ flowchart LR
           <li>NoSQL systems like Cassandra or Dynamo-style stores power high-throughput, multi-region workloads.</li>
           <li>Document stores and wide-column databases are common for flexible schemas and high ingest.</li>
           <li>Cloud-native systems combine strong consistency per shard with global replication.</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>Interview tips</h2>
-        <ul>
-          <li>Start with access patterns and consistency requirements before naming a database.</li>
-          <li>Call out shard keys early, along with how you handle hot partitions.</li>
-          <li>Explain whether reads can be stale and how you communicate that in the product.</li>
-          <li>Tie replication factor to durability goals and failure domains.</li>
-          <li>Mention backfill and rebalancing strategies for growth.</li>
         </ul>
       </section>
     </main>

@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en" data-color-mode="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Operating Systems Fundamentals | Distributed Systems Visual Guide</title>
+    <link rel="stylesheet" href="../assets/css/theme.css" />
+    <script defer src="../assets/js/toggleTheme.js"></script>
+    <script defer src="../assets/js/site.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script defer src="../assets/js/mermaid-init.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-brand">
+        <a href="../index.html">Distributed Systems Visual Guide</a>
+      </div>
+      <nav class="site-nav">
+        <a href="../index.html">Home</a>
+        <a href="compute-patterns.html">Compute</a>
+        <a href="database-architectures.html">Storage</a>
+        <a href="database-patterns.html">Databases</a>
+        <a href="consistency-models.html">Consistency</a>
+        <a href="networking-patterns.html">Networking</a>
+        <a href="kubernetes-patterns.html">Kubernetes</a>
+        <a href="operating-systems.html" class="is-active" aria-current="page">Operating Systems</a>
+      </nav>
+      <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
+    </header>
+    <main>
+      <h1>Operating Systems Fundamentals</h1>
+
+      <section>
+        <h2>Problem framing</h2>
+        <p>
+          Every distributed system rests on an operating system that multiplexes CPU, memory, and devices safely across
+          workloads. The OS must provide isolation, fairness, and durability while hiding hardware complexity behind
+          stable interfaces. The "three easy pieces" frame this as virtualization, concurrency, and persistence.
+        </p>
+      </section>
+
+      <section>
+        <h2>Core idea / pattern</h2>
+        <h3>Virtualization</h3>
+        <p>
+          Problem: many programs need to share hardware without corrupting each other.
+          Pattern: processes, virtual address spaces, context switches, and protected modes that make resources appear
+          private even when they are shared.
+        </p>
+
+        <h3>Concurrency</h3>
+        <p>
+          Problem: multiple threads interleave unpredictably, risking races and starvation.
+          Pattern: schedulers, locks, and coordination primitives that constrain interleavings while keeping throughput
+          high.
+        </p>
+
+        <h3>Persistence</h3>
+        <p>
+          Problem: data must survive crashes and power loss.
+          Pattern: buffering, write-ahead logging, and journaling file systems that make durable state predictable.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Piece</th>
+              <th>Goal</th>
+              <th>Primary mechanisms</th>
+              <th>Typical failures</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Virtualization</td>
+              <td>Isolation and multiplexing</td>
+              <td>Processes, virtual memory, traps</td>
+              <td>Address corruption, leaks</td>
+            </tr>
+            <tr>
+              <td>Concurrency</td>
+              <td>Correctness under interleaving</td>
+              <td>Scheduling, locks, signals</td>
+              <td>Deadlock, starvation</td>
+            </tr>
+            <tr>
+              <td>Persistence</td>
+              <td>Durable state</td>
+              <td>Journaling, buffering, fsync</td>
+              <td>Corruption after crash</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Architecture diagram</h2>
+        <pre class="mermaid">
+flowchart TB
+  App[Applications] --> Syscall[System Call API]
+  Syscall --> Kernel[Kernel]
+  Kernel --> Sched[CPU Scheduler]
+  Kernel --> VM[Virtual Memory]
+  Kernel --> FS[File System]
+  Kernel --> Driver[Device Drivers]
+  Driver --> HW[Hardware]
+        </pre>
+      </section>
+
+      <section>
+        <h2>Step-by-step flow</h2>
+        <ol>
+          <li>A process issues a file read system call.</li>
+          <li>The kernel checks page cache; on a miss it schedules an I/O request.</li>
+          <li>The I/O scheduler dispatches work to the device driver and blocks the thread.</li>
+          <li>When the device interrupt arrives, the kernel copies data into memory pages.</li>
+          <li>The scheduler wakes the blocked thread and resumes user-space execution.</li>
+        </ol>
+        <h3>Interactive: Syscall read path</h3>
+        <div class="playground os-playground">
+          <div class="os-stepper">
+            <button class="os-step-button" type="button" id="os-step-prev">Prev</button>
+            <button class="os-step-button" type="button" id="os-step-next">Next</button>
+            <div class="os-step-label" id="os-step-label">Step 1 of 5</div>
+          </div>
+          <div class="viz os-viz" id="os-syscall-viz" role="img" aria-label="Interactive syscall read path diagram."></div>
+          <p class="playground-note" id="os-step-note"></p>
+        </div>
+      </section>
+
+      <section>
+        <h2>Failure modes</h2>
+        <ul>
+          <li>Deadlocks or priority inversion stall critical threads.</li>
+          <li>Memory leaks or runaway allocations trigger out-of-memory kills.</li>
+          <li>Thrashing occurs when working sets exceed physical memory.</li>
+          <li>Unflushed buffers lead to data loss after sudden power failure.</li>
+          <li>Kernel bugs propagate into system-wide outages.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Trade-offs</h2>
+        <ul>
+          <li>Preemptive scheduling improves fairness but can reduce cache locality.</li>
+          <li>Larger page sizes reduce TLB pressure but increase fragmentation.</li>
+          <li>Write-back caching boosts throughput yet increases durability risk.</li>
+          <li>Sync I/O offers predictability at the cost of latency and throughput.</li>
+          <li>Isolation primitives improve safety but add overhead.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Real-world usage</h2>
+        <ul>
+          <li>Linux CFS balances throughput and fairness across CPU-bound workloads.</li>
+          <li>cgroups and namespaces enable container isolation for <a href="kubernetes-patterns.html">Kubernetes</a>.</li>
+          <li>Journaling file systems like ext4 and XFS protect against partial writes.</li>
+          <li>Copy-on-write systems like ZFS and btrfs ease snapshots and rollback.</li>
+        </ul>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div>Built for senior engineers and system designers.</div>
+      <div>Distributed Systems Visual Guide.</div>
+    </footer>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        if (!window.d3) {
+          return;
+        }
+
+        var container = document.getElementById("os-syscall-viz");
+        var stepLabel = document.getElementById("os-step-label");
+        var stepNote = document.getElementById("os-step-note");
+        var prevButton = document.getElementById("os-step-prev");
+        var nextButton = document.getElementById("os-step-next");
+
+        if (!container || !stepLabel || !stepNote || !prevButton || !nextButton) {
+          return;
+        }
+
+        var width = 920;
+        var height = 260;
+        var nodeWidth = 130;
+        var nodeHeight = 42;
+
+        var nodes = [
+          { id: "app", label: "App Process", x: 90, y: 130 },
+          { id: "syscall", label: "Syscall API", x: 230, y: 130 },
+          { id: "kernel", label: "Kernel", x: 370, y: 130 },
+          { id: "cache", label: "Page Cache", x: 520, y: 80 },
+          { id: "io", label: "I/O Scheduler", x: 520, y: 180 },
+          { id: "driver", label: "Device Driver", x: 690, y: 180 },
+          { id: "disk", label: "Disk", x: 850, y: 180 },
+          { id: "interrupt", label: "Interrupt", x: 690, y: 80 },
+          { id: "ready", label: "Ready Queue", x: 850, y: 80 }
+        ];
+
+        var edges = [
+          { id: "e1", from: "app", to: "syscall" },
+          { id: "e2", from: "syscall", to: "kernel" },
+          { id: "e3", from: "kernel", to: "cache" },
+          { id: "e4", from: "cache", to: "io" },
+          { id: "e5", from: "io", to: "driver" },
+          { id: "e6", from: "driver", to: "disk" },
+          { id: "e7", from: "disk", to: "interrupt" },
+          { id: "e8", from: "interrupt", to: "kernel" },
+          { id: "e9", from: "kernel", to: "ready" },
+          { id: "e10", from: "ready", to: "app" }
+        ];
+
+        var steps = [
+          {
+            label: "System call entry",
+            note: "The process traps into the kernel through the syscall interface.",
+            nodes: ["app", "syscall", "kernel"],
+            edges: ["e1", "e2"]
+          },
+          {
+            label: "Cache lookup",
+            note: "The kernel checks the page cache and schedules I/O on a miss.",
+            nodes: ["kernel", "cache", "io"],
+            edges: ["e3", "e4"]
+          },
+          {
+            label: "I/O dispatch",
+            note: "The I/O scheduler sends the request to the device driver and disk.",
+            nodes: ["io", "driver", "disk"],
+            edges: ["e5", "e6"]
+          },
+          {
+            label: "Interrupt handling",
+            note: "The disk signals completion and the kernel copies data into memory.",
+            nodes: ["disk", "interrupt", "kernel", "cache"],
+            edges: ["e7", "e8", "e3"]
+          },
+          {
+            label: "Thread resumes",
+            note: "The scheduler places the thread on the ready queue to resume in user space.",
+            nodes: ["kernel", "ready", "app"],
+            edges: ["e9", "e10"]
+          }
+        ];
+
+        var nodeById = {};
+        nodes.forEach(function (node) {
+          nodeById[node.id] = node;
+        });
+
+        var svg = window.d3
+          .select(container)
+          .append("svg")
+          .attr("viewBox", "0 0 " + width + " " + height)
+          .attr("role", "presentation");
+
+        var edgeSelection = svg
+          .append("g")
+          .selectAll("line")
+          .data(edges)
+          .enter()
+          .append("line")
+          .attr("class", "os-edge")
+          .attr("x1", function (edge) {
+            return nodeById[edge.from].x;
+          })
+          .attr("y1", function (edge) {
+            return nodeById[edge.from].y;
+          })
+          .attr("x2", function (edge) {
+            return nodeById[edge.to].x;
+          })
+          .attr("y2", function (edge) {
+            return nodeById[edge.to].y;
+          });
+
+        var nodeGroup = svg
+          .append("g")
+          .selectAll("g")
+          .data(nodes)
+          .enter()
+          .append("g");
+
+        nodeGroup
+          .append("rect")
+          .attr("class", "os-node")
+          .attr("x", function (node) {
+            return node.x - nodeWidth / 2;
+          })
+          .attr("y", function (node) {
+            return node.y - nodeHeight / 2;
+          })
+          .attr("width", nodeWidth)
+          .attr("height", nodeHeight)
+          .attr("rx", 14);
+
+        nodeGroup
+          .append("text")
+          .attr("class", "os-label")
+          .attr("x", function (node) {
+            return node.x;
+          })
+          .attr("y", function (node) {
+            return node.y + 4;
+          })
+          .attr("text-anchor", "middle")
+          .text(function (node) {
+            return node.label;
+          });
+
+        var activeIndex = 0;
+
+        function updateStep(index) {
+          activeIndex = index;
+          var step = steps[index];
+
+          nodeGroup.select("rect").classed("is-active", function (node) {
+            return step.nodes.indexOf(node.id) !== -1;
+          });
+
+          edgeSelection.classed("is-active", function (edge) {
+            return step.edges.indexOf(edge.id) !== -1;
+          });
+
+          stepLabel.textContent = "Step " + (index + 1) + " of " + steps.length + ": " + step.label;
+          stepNote.textContent = step.note;
+          prevButton.disabled = index === 0;
+          nextButton.disabled = index === steps.length - 1;
+        }
+
+        prevButton.addEventListener("click", function () {
+          if (activeIndex > 0) {
+            updateStep(activeIndex - 1);
+          }
+        });
+
+        nextButton.addEventListener("click", function () {
+          if (activeIndex < steps.length - 1) {
+            updateStep(activeIndex + 1);
+          }
+        });
+
+        updateStep(0);
+      });
+    </script>
+  </body>
+</html>

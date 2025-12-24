@@ -22,10 +22,11 @@
         <a href="../index.html">Home</a>
         <a href="compute-patterns.html">Compute</a>
         <a href="database-architectures.html">Storage</a>
+        <a href="database-patterns.html">Databases</a>
         <a href="consistency-models.html">Consistency</a>
         <a href="networking-patterns.html" class="is-active" aria-current="page">Networking</a>
         <a href="kubernetes-patterns.html">Kubernetes</a>
-        <a href="system-design-patterns.html">Interview</a>
+        <a href="operating-systems.html">Operating Systems</a>
       </nav>
       <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
     </header>
@@ -33,7 +34,7 @@
       <h1>Networking Patterns</h1>
 
       <section>
-        <h2>Why this problem exists</h2>
+        <h2>Problem framing</h2>
         <p>
           Distributed systems move across dynamic networks where service instances appear, disappear, and relocate.
           Clients and services need stable discovery, safe routing, and policy enforcement without assuming static IPs.
@@ -131,7 +132,6 @@
         <p>
           Backpressure protects upstream services when downstream services are saturated.
           Mechanisms include queue limits, circuit breakers, and token-bucket rate limiting.
-          See <a href="system-design-patterns.html">system design interview patterns</a> for rate limiting and circuit breakers.
         </p>
       </section>
 
@@ -231,17 +231,6 @@ flowchart LR
           <li>Service meshes such as Istio or Linkerd manage mTLS and routing inside clusters.</li>
           <li>DNS-based discovery is common in Kubernetes via CoreDNS; see <a href="kubernetes-patterns.html">Kubernetes patterns</a>.</li>
           <li>gRPC is common for internal RPC while REST remains common for public APIs.</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>Interview tips</h2>
-        <ul>
-          <li>Start with the request path and identify where policy and routing should live.</li>
-          <li>Call out discovery and health checks before discussing retries and timeouts.</li>
-          <li>Explain how you prevent retry storms and protect downstream services.</li>
-          <li>Tie protocol choice to client ecosystem and latency requirements.</li>
-          <li>Mention how you would instrument traces and metrics at the gateway and mesh.</li>
         </ul>
       </section>
     </main>

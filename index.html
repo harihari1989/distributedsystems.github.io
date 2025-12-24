@@ -17,10 +17,11 @@
         <a href="index.html" class="is-active" aria-current="page">Home</a>
         <a href="pages/compute-patterns.html">Compute</a>
         <a href="pages/database-architectures.html">Storage</a>
+        <a href="pages/database-patterns.html">Databases</a>
         <a href="pages/consistency-models.html">Consistency</a>
         <a href="pages/networking-patterns.html">Networking</a>
         <a href="pages/kubernetes-patterns.html">Kubernetes</a>
-        <a href="pages/system-design-patterns.html">Interview</a>
+        <a href="pages/operating-systems.html">Operating Systems</a>
       </nav>
       <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
     </header>
@@ -33,7 +34,6 @@
         </p>
         <div class="hero-actions">
           <a class="hero-link" href="pages/compute-patterns.html">Start with compute patterns</a>
-          <a class="hero-link" href="pages/system-design-patterns.html">Jump to interview patterns</a>
         </div>
       </section>
 
@@ -48,6 +48,10 @@
             <h3>Storage and data patterns</h3>
             <p>Replication, sharding, and the architectural shape of data systems.</p>
           </a>
+          <a class="card" href="pages/database-patterns.html">
+            <h3>Database patterns</h3>
+            <p>SQL, NoSQL, graph, and vector databases matched to query shapes.</p>
+          </a>
           <a class="card" href="pages/consistency-models.html">
             <h3>Consistency models</h3>
             <p>Strong, causal, and eventual guarantees with practical trade-offs.</p>
@@ -60,9 +64,9 @@
             <h3>Kubernetes patterns</h3>
             <p>Pods, controllers, sidecars, and safe deployment strategies.</p>
           </a>
-          <a class="card" href="pages/system-design-patterns.html">
-            <h3>Interview patterns</h3>
-            <p>Leadership, quorums, and reliability patterns that show up everywhere.</p>
+          <a class="card" href="pages/operating-systems.html">
+            <h3>Operating systems</h3>
+            <p>Virtualization, concurrency, and persistence fundamentals.</p>
           </a>
         </div>
       </section>
@@ -94,10 +98,6 @@
             <h3>Quorum budgets</h3>
             <p>Balance read and write quorums for desired guarantees.</p>
           </a>
-          <a class="card" href="pages/system-design-patterns.html#playground-rate-limits">
-            <h3>Rate limiter behavior</h3>
-            <p>Understand burst handling and throttling thresholds.</p>
-          </a>
         </div>
       </section>
 
@@ -105,8 +105,9 @@
         <h2>How to Use This Guide</h2>
         <ul>
           <li>Start with compute patterns to align on workload and scaling primitives.</li>
-          <li>Use the storage and consistency pages to reason about data trade-offs.</li>
+          <li>Use the storage, database, and consistency pages to reason about data trade-offs.</li>
           <li>Cross-link into networking and Kubernetes when you need operational detail.</li>
+          <li>Reference operating systems to ground scheduling, memory, and I/O behavior.</li>
         </ul>
       </section>
     </main>

@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en" data-color-mode="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Database Patterns | Distributed Systems Visual Guide</title>
+    <link rel="stylesheet" href="../assets/css/theme.css" />
+    <script defer src="../assets/js/toggleTheme.js"></script>
+    <script defer src="../assets/js/site.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script defer src="../assets/js/mermaid-init.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-brand">
+        <a href="../index.html">Distributed Systems Visual Guide</a>
+      </div>
+      <nav class="site-nav">
+        <a href="../index.html">Home</a>
+        <a href="compute-patterns.html">Compute</a>
+        <a href="database-architectures.html">Storage</a>
+        <a href="database-patterns.html" class="is-active" aria-current="page">Databases</a>
+        <a href="consistency-models.html">Consistency</a>
+        <a href="networking-patterns.html">Networking</a>
+        <a href="kubernetes-patterns.html">Kubernetes</a>
+        <a href="operating-systems.html">Operating Systems</a>
+      </nav>
+      <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
+    </header>
+    <main>
+      <h1>Database Patterns</h1>
+
+      <section>
+        <h2>Problem framing</h2>
+        <p>
+          Product teams need to store facts, relationships, and unstructured knowledge while meeting strict latency and
+          correctness requirements. Query shapes range from transactions and joins to graph traversals and semantic
+          similarity. No single model handles every workload, so modern systems often choose polyglot persistence.
+          Replication and sharding mechanics are covered in <a href="database-architectures.html">storage patterns</a>.
+        </p>
+      </section>
+
+      <section>
+        <h2>Core idea / pattern</h2>
+        <h3>SQL (relational)</h3>
+        <p>
+          Problem: enforce invariants across entities while supporting transactional updates and ad hoc joins.
+          Pattern: normalized schema, secondary indexes, and ACID transactions, with targeted denormalization when
+          read latency dominates.
+        </p>
+
+        <h3>NoSQL (key-value, document, wide-column)</h3>
+        <p>
+          Problem: sustain high write throughput or flexible schemas with predictable partitioning.
+          Pattern: key-based access with denormalized records, application-managed constraints, and tunable
+          consistency aligned to <a href="consistency-models.html">consistency guarantees</a>.
+        </p>
+
+        <h3>Graph databases</h3>
+        <p>
+          Problem: traverse deep or highly connected relationships without costly multi-join queries.
+          Pattern: store nodes and edges with adjacency indexes, enabling traversal-first queries and path search
+          optimized for relationship depth.
+        </p>
+
+        <h3>RAG databases (vector)</h3>
+        <p>
+          Problem: retrieve semantically similar content to ground AI or search workflows.
+          Pattern: embed text or media into vectors, build ANN indexes, and combine similarity search with metadata
+          filters and reranking to return grounded context.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Pattern</th>
+              <th>Best at</th>
+              <th>Primary index</th>
+              <th>Key risks</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>SQL</td>
+              <td>Transactions, joins, reporting</td>
+              <td>B-tree / hash</td>
+              <td>Contention, migration overhead</td>
+            </tr>
+            <tr>
+              <td>NoSQL</td>
+              <td>High write scale, flexible schemas</td>
+              <td>Partition key</td>
+              <td>Hot keys, consistency gaps</td>
+            </tr>
+            <tr>
+              <td>Graph</td>
+              <td>Relationship queries, path search</td>
+              <td>Adjacency lists</td>
+              <td>Traversal explosions</td>
+            </tr>
+            <tr>
+              <td>RAG / vector</td>
+              <td>Semantic similarity, retrieval</td>
+              <td>ANN index</td>
+              <td>Stale embeddings, recall drift</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Architecture diagram</h2>
+        <pre class="mermaid">
+flowchart LR
+  App[Product API] --> Router[Query Router]
+  Router --> SQL[SQL Store]
+  Router --> NoSQL[NoSQL Store]
+  Router --> Graph[Graph Store]
+  Router --> Vector[Vector Store]
+  Pipeline[Embedding Pipeline] --> Vector
+        </pre>
+      </section>
+
+      <section>
+        <h2>Step-by-step flow</h2>
+        <ol>
+          <li>A request arrives with a user ID and a search prompt.</li>
+          <li>The query router fetches account state from the SQL store.</li>
+          <li>Feed candidates are loaded from a NoSQL store keyed by user.</li>
+          <li>Graph traversal expands relationship-based candidates.</li>
+          <li>The vector store returns semantically similar documents for grounding.</li>
+          <li>The service merges and ranks results before responding.</li>
+        </ol>
+        <h3>Interactive: RAG retrieval path</h3>
+        <div class="playground db-playground">
+          <div class="db-stepper">
+            <button class="db-step-button" type="button" id="db-step-prev">Prev</button>
+            <button class="db-step-button" type="button" id="db-step-next">Next</button>
+            <div class="db-step-label" id="db-step-label">Step 1 of 5</div>
+          </div>
+          <div class="viz db-viz" id="db-rag-viz" role="img" aria-label="Interactive RAG retrieval path diagram."></div>
+          <p class="playground-note" id="db-step-note"></p>
+        </div>
+      </section>
+
+      <section>
+        <h2>Failure modes</h2>
+        <ul>
+          <li>Long-running SQL transactions hold locks and block critical writes.</li>
+          <li>Hot partition keys overload a subset of NoSQL nodes.</li>
+          <li>Graph traversals fan out across too many edges and spike latency.</li>
+          <li>Embedding pipelines lag, returning stale or missing context.</li>
+          <li>Polyglot systems suffer drift when dual writes diverge.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Trade-offs</h2>
+        <ul>
+          <li>SQL offers strong correctness but can be harder to scale horizontally.</li>
+          <li>NoSQL simplifies partitioning yet pushes joins and constraints into application logic.</li>
+          <li>Graph stores excel at relationship queries but require careful traversal limits.</li>
+          <li>Vector stores improve semantic recall at the cost of extra compute and storage.</li>
+          <li>Polyglot persistence improves fit but increases operational complexity.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Real-world usage</h2>
+        <ul>
+          <li>SQL systems like PostgreSQL or MySQL run core transactional workloads.</li>
+          <li>NoSQL stores like DynamoDB, Cassandra, or MongoDB power high-throughput workloads.</li>
+          <li>Graph databases like Neo4j or JanusGraph support recommendations and fraud graphs.</li>
+          <li>Vector databases like Pinecone, Weaviate, or pgvector serve RAG retrieval layers.</li>
+          <li>Teams combine models while relying on <a href="database-architectures.html">storage patterns</a> for scale.</li>
+        </ul>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div>Built for senior engineers and system designers.</div>
+      <div>Distributed Systems Visual Guide.</div>
+    </footer>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        if (!window.d3) {
+          return;
+        }
+
+        var container = document.getElementById("db-rag-viz");
+        var stepLabel = document.getElementById("db-step-label");
+        var stepNote = document.getElementById("db-step-note");
+        var prevButton = document.getElementById("db-step-prev");
+        var nextButton = document.getElementById("db-step-next");
+
+        if (!container || !stepLabel || !stepNote || !prevButton || !nextButton) {
+          return;
+        }
+
+        var width = 920;
+        var height = 260;
+        var nodeWidth = 140;
+        var nodeHeight = 44;
+
+        var nodes = [
+          { id: "user", label: "User Query", x: 90, y: 130 },
+          { id: "embed", label: "Embedding", x: 240, y: 130 },
+          { id: "vector", label: "Vector Index", x: 410, y: 80 },
+          { id: "filter", label: "Metadata Filter", x: 410, y: 180 },
+          { id: "docs", label: "Document Store", x: 590, y: 180 },
+          { id: "rerank", label: "Reranker", x: 590, y: 80 },
+          { id: "context", label: "Context Builder", x: 760, y: 130 },
+          { id: "answer", label: "Response", x: 890, y: 130 }
+        ];
+
+        var edges = [
+          { id: "e1", from: "user", to: "embed" },
+          { id: "e2", from: "embed", to: "vector" },
+          { id: "e3", from: "vector", to: "filter" },
+          { id: "e4", from: "filter", to: "docs" },
+          { id: "e5", from: "docs", to: "rerank" },
+          { id: "e6", from: "rerank", to: "context" },
+          { id: "e7", from: "context", to: "answer" }
+        ];
+
+        var steps = [
+          {
+            label: "Embed query",
+            note: "The user query is embedded into a vector representation.",
+            nodes: ["user", "embed"],
+            edges: ["e1"]
+          },
+          {
+            label: "Similarity search",
+            note: "The vector index returns nearest neighbors for the embedding.",
+            nodes: ["embed", "vector"],
+            edges: ["e2"]
+          },
+          {
+            label: "Filter candidates",
+            note: "Metadata filters constrain results to the allowed scope.",
+            nodes: ["vector", "filter", "docs"],
+            edges: ["e3", "e4"]
+          },
+          {
+            label: "Fetch + rerank",
+            note: "Documents are fetched and reranked for relevance and freshness.",
+            nodes: ["docs", "rerank"],
+            edges: ["e5"]
+          },
+          {
+            label: "Assemble response",
+            note: "Top documents form context for the final response.",
+            nodes: ["rerank", "context", "answer"],
+            edges: ["e6", "e7"]
+          }
+        ];
+
+        var nodeById = {};
+        nodes.forEach(function (node) {
+          nodeById[node.id] = node;
+        });
+
+        var svg = window.d3
+          .select(container)
+          .append("svg")
+          .attr("viewBox", "0 0 " + width + " " + height)
+          .attr("role", "presentation");
+
+        var edgeSelection = svg
+          .append("g")
+          .selectAll("line")
+          .data(edges)
+          .enter()
+          .append("line")
+          .attr("class", "db-edge")
+          .attr("x1", function (edge) {
+            return nodeById[edge.from].x;
+          })
+          .attr("y1", function (edge) {
+            return nodeById[edge.from].y;
+          })
+          .attr("x2", function (edge) {
+            return nodeById[edge.to].x;
+          })
+          .attr("y2", function (edge) {
+            return nodeById[edge.to].y;
+          });
+
+        var nodeGroup = svg
+          .append("g")
+          .selectAll("g")
+          .data(nodes)
+          .enter()
+          .append("g");
+
+        nodeGroup
+          .append("rect")
+          .attr("class", "db-node")
+          .attr("x", function (node) {
+            return node.x - nodeWidth / 2;
+          })
+          .attr("y", function (node) {
+            return node.y - nodeHeight / 2;
+          })
+          .attr("width", nodeWidth)
+          .attr("height", nodeHeight)
+          .attr("rx", 14);
+
+        nodeGroup
+          .append("text")
+          .attr("class", "db-label")
+          .attr("x", function (node) {
+            return node.x;
+          })
+          .attr("y", function (node) {
+            return node.y + 4;
+          })
+          .attr("text-anchor", "middle")
+          .text(function (node) {
+            return node.label;
+          });
+
+        var activeIndex = 0;
+
+        function updateStep(index) {
+          activeIndex = index;
+          var step = steps[index];
+
+          nodeGroup.select("rect").classed("is-active", function (node) {
+            return step.nodes.indexOf(node.id) !== -1;
+          });
+
+          edgeSelection.classed("is-active", function (edge) {
+            return step.edges.indexOf(edge.id) !== -1;
+          });
+
+          stepLabel.textContent = "Step " + (index + 1) + " of " + steps.length + ": " + step.label;
+          stepNote.textContent = step.note;
+          prevButton.disabled = index === 0;
+          nextButton.disabled = index === steps.length - 1;
+        }
+
+        prevButton.addEventListener("click", function () {
+          if (activeIndex > 0) {
+            updateStep(activeIndex - 1);
+          }
+        });
+
+        nextButton.addEventListener("click", function () {
+          if (activeIndex < steps.length - 1) {
+            updateStep(activeIndex + 1);
+          }
+        });
+
+        updateStep(0);
+      });
+    </script>
+  </body>
+</html>

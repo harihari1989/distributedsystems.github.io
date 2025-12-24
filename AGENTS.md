@@ -48,14 +48,13 @@ sequenceDiagram
 ## Page Template
 Each page should follow:
 1. Title
-2. Why this problem exists
+2. Problem framing
 3. Core idea / pattern
 4. Architecture diagram
 5. Step-by-step flow
 6. Failure modes
 7. Trade-offs
 8. Real-world usage
-9. Interview tips
 
 ## Maintaining Context Across Pages
 - Refer to existing pages instead of redefining concepts.
@@ -70,5 +69,4 @@ Each page should follow:
 
 ## End State Vision
 - A visual system design textbook.
-- A principal-level interview prep guide.
 - A living reference for distributed architecture.
