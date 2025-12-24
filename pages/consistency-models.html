@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en" data-color-mode="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Consistency Models | Distributed Systems Visual Guide</title>
+    <link rel="stylesheet" href="../assets/css/theme.css" />
+    <script defer src="../assets/js/toggleTheme.js"></script>
+    <script defer src="../assets/js/site.js"></script>
+    <script defer src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script defer src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script defer src="../assets/js/playgrounds.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script defer src="../assets/js/mermaid-init.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-brand">
+        <a href="../index.html">Distributed Systems Visual Guide</a>
+      </div>
+      <nav class="site-nav">
+        <a href="../index.html">Home</a>
+        <a href="compute-patterns.html">Compute</a>
+        <a href="database-architectures.html">Storage</a>
+        <a href="consistency-models.html" class="is-active" aria-current="page">Consistency</a>
+        <a href="networking-patterns.html">Networking</a>
+        <a href="kubernetes-patterns.html">Kubernetes</a>
+        <a href="system-design-patterns.html">Interview</a>
+      </nav>
+      <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
+    </header>
+    <main>
+      <h1>Consistency Models</h1>
+
+      <section>
+        <h2>Why this problem exists</h2>
+        <p>
+          Distributed systems replicate state for availability and scale, but replication introduces divergence.
+          Consistency models define what clients can assume about reads relative to writes.
+          Without explicit guarantees, applications become brittle and correctness bugs are hard to reproduce.
+        </p>
+      </section>
+
+      <section>
+        <h2>Core idea / pattern</h2>
+        <h3>Strong consistency</h3>
+        <p>
+          Strong consistency (often linearizability) ensures reads reflect the latest successful write in a single global order.
+          This model simplifies reasoning but requires coordination and can reduce availability under partition.
+        </p>
+
+        <h3>Causal consistency</h3>
+        <p>
+          Causal consistency preserves the order of causally related writes, but allows concurrent writes to be observed in different orders.
+          It enables low-latency reads while respecting causal relationships such as read-your-writes and session guarantees.
+        </p>
+
+        <h3>Eventual consistency</h3>
+        <p>
+          Eventual consistency allows replicas to diverge temporarily, but guarantees convergence when updates stop.
+          Applications must handle conflicts or use mergeable data types to reconcile divergent histories.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Model</th>
+              <th>Guarantee</th>
+              <th>Typical cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Strong</td>
+              <td>Global order, latest reads</td>
+              <td>Higher latency, lower availability</td>
+            </tr>
+            <tr>
+              <td>Causal</td>
+              <td>Preserves causality</td>
+              <td>Metadata overhead, session tracking</td>
+            </tr>
+            <tr>
+              <td>Eventual</td>
+              <td>Convergence over time</td>
+              <td>Conflicts, app-level reconciliation</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Architecture diagram</h2>
+        <pre class="mermaid">
+sequenceDiagram
+  participant Client
+  participant Leader
+  participant Replica1
+  participant Replica2
+  Client->>Leader: Write(x=1)
+  Leader->>Replica1: Replicate x=1
+  Leader->>Replica2: Replicate x=1
+  Client->>Replica2: Read x
+  Replica2-->>Client: x=1
+        </pre>
+      </section>
+
+      <section>
+        <h2>Animated flow</h2>
+        <div class="viz">
+          <svg viewBox="0 0 820 220" role="img" aria-label="Animated write propagation from leader to replicas with a read response.">
+            <rect class="node pulse" x="40" y="60" width="140" height="60" rx="14"></rect>
+            <text x="72" y="95">Leader</text>
+
+            <rect class="node pulse-slow" x="320" y="30" width="160" height="60" rx="14"></rect>
+            <text x="350" y="65">Replica 1</text>
+
+            <rect class="node pulse-slow" x="320" y="120" width="160" height="60" rx="14"></rect>
+            <text x="350" y="155">Replica 2</text>
+
+            <rect class="node" x="600" y="120" width="160" height="60" rx="14"></rect>
+            <text x="635" y="155">Client</text>
+
+            <path class="edge flow" d="M180 90 L320 60"></path>
+            <path class="edge flow" d="M180 90 L320 150"></path>
+            <path class="edge flow" d="M480 150 L600 150"></path>
+
+            <circle class="packet" r="4">
+              <animateMotion dur="3.6s" repeatCount="indefinite" path="M180 90 L320 60"></animateMotion>
+            </circle>
+            <circle class="packet" r="4">
+              <animateMotion dur="4.2s" begin="0.8s" repeatCount="indefinite" path="M180 90 L320 150"></animateMotion>
+            </circle>
+            <circle class="packet" r="4">
+              <animateMotion dur="3.2s" begin="1.2s" repeatCount="indefinite" path="M480 150 L600 150"></animateMotion>
+            </circle>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <h2>Step-by-step flow</h2>
+        <ol>
+          <li>A client writes a value to the leader or primary replica.</li>
+          <li>The leader replicates the write to followers and tracks acknowledgements.</li>
+          <li>A read is routed to a replica based on the configured consistency level.</li>
+          <li>If strong consistency is required, the system waits for quorum or leader confirmation.</li>
+          <li>If eventual consistency is allowed, the read may return stale data.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2 id="playground-quorums">Playground: Quorum consistency budget</h2>
+        <div id="playground-quorums-root"></div>
+      </section>
+
+      <section>
+        <h2>Failure modes</h2>
+        <ul>
+          <li>Stale reads occur when replicas lag or clients read from followers without quorum.</li>
+          <li>Concurrent writes create conflicts that require resolution or can cause lost updates.</li>
+          <li>Network partitions force a choice between availability and strict ordering.</li>
+          <li>Clock skew breaks timestamp-based ordering and can cause write reordering.</li>
+          <li>Over-aggressive retries amplify contention and increase conflict rates.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Trade-offs</h2>
+        <ul>
+          <li>Strong consistency reduces anomalies but increases tail latency and coordination cost.</li>
+          <li>Causal consistency offers a balance, but requires tracking causal metadata.</li>
+          <li>Eventual consistency maximizes availability and scale, but shifts complexity to the application.</li>
+          <li>Quorum reads and writes reduce inconsistency but increase operational cost.</li>
+          <li>Read locality improves latency but risks returning stale data.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Real-world usage</h2>
+        <ul>
+          <li>Spanner and CockroachDB provide strong consistency with distributed transactions.</li>
+          <li>Dynamo-style systems and Cassandra often favor eventual consistency with tunable quorums.</li>
+          <li>Redis and caching layers frequently use eventual or session consistency for speed.</li>
+          <li>Multi-region systems often offer configurable consistency tiers per request.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Interview tips</h2>
+        <ul>
+          <li>Start by stating the required user-visible guarantees, not the database name.</li>
+          <li>Explain the trade-off between latency and correctness for the workload.</li>
+          <li>Mention how quorum settings map to consistency and availability.</li>
+          <li>Call out conflict resolution strategy when using eventual consistency.</li>
+          <li>Tie consistency choices to failure handling and recovery expectations.</li>
+        </ul>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div>Built for senior engineers and system designers.</div>
+      <div>Distributed Systems Visual Guide.</div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en" data-color-mode="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Storage and Data Patterns | Distributed Systems Visual Guide</title>
+    <link rel="stylesheet" href="../assets/css/theme.css" />
+    <script defer src="../assets/js/toggleTheme.js"></script>
+    <script defer src="../assets/js/site.js"></script>
+    <script defer src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script defer src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script defer src="../assets/js/playgrounds.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script defer src="../assets/js/mermaid-init.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-brand">
+        <a href="../index.html">Distributed Systems Visual Guide</a>
+      </div>
+      <nav class="site-nav">
+        <a href="../index.html">Home</a>
+        <a href="compute-patterns.html">Compute</a>
+        <a href="database-architectures.html" class="is-active" aria-current="page">Storage</a>
+        <a href="consistency-models.html">Consistency</a>
+        <a href="networking-patterns.html">Networking</a>
+        <a href="kubernetes-patterns.html">Kubernetes</a>
+        <a href="system-design-patterns.html">Interview</a>
+      </nav>
+      <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
+    </header>
+    <main>
+      <h1>Storage and Data Patterns</h1>
+
+      <section>
+        <h2>Why this problem exists</h2>
+        <p>
+          Data systems must survive failures, scale throughput, and keep latency predictable under uneven access.
+          Replication protects availability and durability, while sharding distributes load across nodes.
+          Partitioning decisions define where data lives, which directly shapes failure behavior and consistency cost.
+        </p>
+      </section>
+
+      <section>
+        <h2>Core idea / pattern</h2>
+        <h3>Replication, sharding, partitioning</h3>
+        <p>
+          Replication copies data across nodes to improve availability and read capacity.
+          Sharding splits a dataset by key or range so no single node holds all data.
+          Partitioning is the physical placement strategy that binds shards to nodes and zones.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Technique</th>
+              <th>Primary goal</th>
+              <th>Typical risks</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Replication</td>
+              <td>Availability and durability</td>
+              <td>Replication lag, write amplification</td>
+            </tr>
+            <tr>
+              <td>Sharding</td>
+              <td>Horizontal scale</td>
+              <td>Hot shards, complex rebalancing</td>
+            </tr>
+            <tr>
+              <td>Partitioning</td>
+              <td>Fault isolation</td>
+              <td>Skewed placement, blast radius overlap</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>SQL vs NoSQL architectures</h3>
+        <p>
+          SQL systems emphasize schema, transactions, and strong consistency within a single logical database.
+          NoSQL systems trade rigid schemas and cross-entity transactions for scale and flexible access patterns.
+          The real decision is workload fit, not ideology; use the smallest model that meets the SLA.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Attribute</th>
+              <th>SQL</th>
+              <th>NoSQL</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Consistency</td>
+              <td>Strong by default</td>
+              <td>Often tunable</td>
+            </tr>
+            <tr>
+              <td>Schema</td>
+              <td>Strict, enforced</td>
+              <td>Flexible or schema-on-read</td>
+            </tr>
+            <tr>
+              <td>Scaling</td>
+              <td>Vertical, or sharded with coordination</td>
+              <td>Horizontal by design</td>
+            </tr>
+            <tr>
+              <td>Transactions</td>
+              <td>Multi-row, ACID</td>
+              <td>Limited or scoped</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>CAP trade-offs</h3>
+        <p>
+          CAP highlights trade-offs during network partitions, not during healthy operation.
+          Under partition, you typically pick availability with eventual consistency or strict consistency with reduced availability.
+          See <a href="consistency-models.html">consistency models</a> for precise guarantees.
+        </p>
+      </section>
+
+      <section>
+        <h2>Architecture diagram</h2>
+        <pre class="mermaid">
+flowchart LR
+  App[Application] --> Router[Shard Router]
+  Router --> ShardA[Shard A Primary]
+  Router --> ShardB[Shard B Primary]
+  ShardA --> RepA1[Replica A1]
+  ShardA --> RepA2[Replica A2]
+  ShardB --> RepB1[Replica B1]
+  ShardB --> RepB2[Replica B2]
+        </pre>
+      </section>
+
+      <section>
+        <h2>Animated flow</h2>
+        <div class="viz">
+          <svg viewBox="0 0 860 300" role="img" aria-label="Animated sharding and replication flow across primaries and replicas.">
+            <rect class="node pulse" x="30" y="120" width="140" height="60" rx="14"></rect>
+            <text x="58" y="155">Router</text>
+
+            <rect class="node" x="230" y="50" width="140" height="60" rx="14"></rect>
+            <text x="255" y="85">Shard A</text>
+
+            <rect class="node" x="230" y="190" width="140" height="60" rx="14"></rect>
+            <text x="255" y="225">Shard B</text>
+
+            <rect class="node pulse-slow" x="440" y="20" width="150" height="60" rx="14"></rect>
+            <text x="468" y="55">Replica A1</text>
+
+            <rect class="node pulse-slow" x="440" y="90" width="150" height="60" rx="14"></rect>
+            <text x="468" y="125">Replica A2</text>
+
+            <rect class="node pulse-slow" x="440" y="170" width="150" height="60" rx="14"></rect>
+            <text x="468" y="205">Replica B1</text>
+
+            <rect class="node pulse-slow" x="440" y="240" width="150" height="60" rx="14"></rect>
+            <text x="468" y="275">Replica B2</text>
+
+            <rect class="node" x="650" y="100" width="170" height="80" rx="14"></rect>
+            <text x="690" y="145">Clients</text>
+
+            <path class="edge flow" d="M170 150 L230 80"></path>
+            <path class="edge flow" d="M170 150 L230 220"></path>
+            <path class="edge flow" d="M370 80 L440 50"></path>
+            <path class="edge flow" d="M370 80 L440 120"></path>
+            <path class="edge flow" d="M370 220 L440 200"></path>
+            <path class="edge flow" d="M370 220 L440 270"></path>
+            <path class="edge flow" d="M590 140 L650 140"></path>
+
+            <circle class="packet" r="4">
+              <animateMotion dur="4s" repeatCount="indefinite" path="M170 150 L230 80 L440 50"></animateMotion>
+            </circle>
+            <circle class="packet" r="4">
+              <animateMotion dur="4.6s" begin="1s" repeatCount="indefinite" path="M170 150 L230 220 L440 200"></animateMotion>
+            </circle>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <h2>Step-by-step flow</h2>
+        <ol>
+          <li>The application submits a request with a shard key.</li>
+          <li>The router selects the shard based on the partitioning scheme.</li>
+          <li>Writes go to the shard primary and replicate to secondaries.</li>
+          <li>Reads are served from the primary or a replica based on consistency requirements.</li>
+          <li>Background processes rebalance shards when hot spots or growth thresholds appear.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2 id="playground-sharding">Playground: Shard skew</h2>
+        <div id="playground-sharding-root"></div>
+      </section>
+
+      <section>
+        <h2>Failure modes</h2>
+        <ul>
+          <li>Replication lag causes stale reads when clients read from followers.</li>
+          <li>Network partitions create split-brain risk without clear leader election.</li>
+          <li>Hot shards dominate CPU or storage, causing tail latency spikes.</li>
+          <li>Rebalancing moves large amounts of data and can overload the network.</li>
+          <li>Misconfigured quorum sizes allow stale reads or lost writes.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Trade-offs</h2>
+        <ul>
+          <li>Strong consistency simplifies reasoning but adds write latency and reduces availability under partition.</li>
+          <li>Eventually consistent systems scale and survive partitions, but add reconciliation complexity.</li>
+          <li>More replicas improve durability but increase write cost and coordination overhead.</li>
+          <li>Range sharding enables efficient scans but risks uneven key distribution.</li>
+          <li>Hash sharding balances load but complicates range queries and data locality.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Real-world usage</h2>
+        <ul>
+          <li>SQL systems like PostgreSQL or MySQL are common for transactional workloads with strict correctness.</li>
+          <li>NoSQL systems like Cassandra or Dynamo-style stores power high-throughput, multi-region workloads.</li>
+          <li>Document stores and wide-column databases are common for flexible schemas and high ingest.</li>
+          <li>Cloud-native systems combine strong consistency per shard with global replication.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Interview tips</h2>
+        <ul>
+          <li>Start with access patterns and consistency requirements before naming a database.</li>
+          <li>Call out shard keys early, along with how you handle hot partitions.</li>
+          <li>Explain whether reads can be stale and how you communicate that in the product.</li>
+          <li>Tie replication factor to durability goals and failure domains.</li>
+          <li>Mention backfill and rebalancing strategies for growth.</li>
+        </ul>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div>Built for senior engineers and system designers.</div>
+      <div>Distributed Systems Visual Guide.</div>
+    </footer>
+  </body>
+</html>

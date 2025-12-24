@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en" data-color-mode="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Compute Patterns | Distributed Systems Visual Guide</title>
+    <link rel="stylesheet" href="../assets/css/theme.css" />
+    <script defer src="../assets/js/toggleTheme.js"></script>
+    <script defer src="../assets/js/site.js"></script>
+    <script defer src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script defer src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script defer src="../assets/js/playgrounds.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script defer src="../assets/js/mermaid-init.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-brand">
+        <a href="../index.html">Distributed Systems Visual Guide</a>
+      </div>
+      <nav class="site-nav">
+        <a href="../index.html">Home</a>
+        <a href="compute-patterns.html" class="is-active" aria-current="page">Compute</a>
+        <a href="database-architectures.html">Storage</a>
+        <a href="consistency-models.html">Consistency</a>
+        <a href="networking-patterns.html">Networking</a>
+        <a href="kubernetes-patterns.html">Kubernetes</a>
+        <a href="system-design-patterns.html">Interview</a>
+      </nav>
+      <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
+    </header>
+    <main>
+      <h1>Compute Patterns</h1>
+
+      <section>
+        <h2>Why this problem exists</h2>
+        <p>
+          Distributed systems must serve variable workloads while meeting latency and availability targets.
+          Compute patterns define how work is placed, how requests are routed, and how state is managed.
+          Without clear patterns, scaling decisions become ad hoc and failure handling becomes inconsistent.
+        </p>
+      </section>
+
+      <section>
+        <h2>Core idea / pattern</h2>
+        <h3>Client-server vs peer-to-peer</h3>
+        <p>
+          Client-server centralizes control and simplifies coordination, but concentrates load and failure domains.
+          Peer-to-peer distributes load and ownership, but requires more complex discovery and consistency management.
+          See <a href="networking-patterns.html">networking patterns</a> for discovery and routing trade-offs.
+        </p>
+
+        <h3>Stateless vs stateful services</h3>
+        <p>
+          Stateless services keep request state out of the service process, enabling quick replacement and elastic scaling.
+          Stateful services keep session or durable state locally, enabling low-latency access at the cost of more complex failover.
+          State placement interacts with replication and consistency decisions in
+          <a href="database-architectures.html">storage and data patterns</a>.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Attribute</th>
+              <th>Stateless services</th>
+              <th>Stateful services</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Scale-out</td>
+              <td>Add or remove instances freely</td>
+              <td>Requires data movement or session affinity</td>
+            </tr>
+            <tr>
+              <td>Failure recovery</td>
+              <td>Replace instance with minimal impact</td>
+              <td>Recover or rebuild local state</td>
+            </tr>
+            <tr>
+              <td>Deployment</td>
+              <td>Easier rolling updates</td>
+              <td>Careful coordination and drain needed</td>
+            </tr>
+            <tr>
+              <td>Latency</td>
+              <td>Often higher due to remote state</td>
+              <td>Lower for local state access</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Horizontal vs vertical scaling</h3>
+        <p>
+          Horizontal scaling adds more nodes to spread load, while vertical scaling increases resources per node.
+          Horizontal scaling improves fault tolerance, but adds coordination overhead and more failure modes.
+          Vertical scaling is simpler to operate, but hits hard limits and larger blast radius.
+        </p>
+
+        <h3>Load balancing strategies</h3>
+        <p>
+          Load balancing spreads requests across replicas using round-robin, least-connections, or latency-aware routing.
+          L7 balancing enables routing by request attributes, but adds CPU cost and state in the proxy layer.
+          For gateway and proxy details, see <a href="networking-patterns.html">networking patterns</a>.
+        </p>
+      </section>
+
+      <section>
+        <h2>Architecture diagram</h2>
+        <pre class="mermaid">
+flowchart LR
+  Clients[Clients] --> DNS[DNS or Anycast]
+  DNS --> LB[Load Balancer]
+  LB --> S1[Stateless Service A]
+  LB --> S2[Stateless Service B]
+  S1 --> Cache[Distributed Cache]
+  S2 --> Cache
+  Cache --> DB[(Stateful Store)]
+        </pre>
+      </section>
+
+      <section>
+        <h2>Animated flow</h2>
+        <div class="viz">
+          <svg viewBox="0 0 800 240" role="img" aria-label="Animated request flow across clients, load balancer, services, cache, and database.">
+            <rect class="node pulse" x="30" y="90" width="120" height="60" rx="14"></rect>
+            <text x="45" y="125">Clients</text>
+
+            <rect class="node" x="200" y="90" width="120" height="60" rx="14"></rect>
+            <text x="220" y="125">Load balancer</text>
+
+            <rect class="node pulse" x="370" y="50" width="120" height="60" rx="14"></rect>
+            <text x="390" y="85">Service A</text>
+
+            <rect class="node pulse-slow" x="370" y="130" width="120" height="60" rx="14"></rect>
+            <text x="390" y="165">Service B</text>
+
+            <rect class="node" x="540" y="90" width="120" height="60" rx="14"></rect>
+            <text x="565" y="125">Cache</text>
+
+            <rect class="node" x="690" y="80" width="90" height="80" rx="14"></rect>
+            <text x="708" y="120">DB</text>
+
+            <path class="edge flow" d="M150 120 L200 120"></path>
+            <path class="edge flow" d="M320 120 L370 80"></path>
+            <path class="edge flow" d="M320 120 L370 160"></path>
+            <path class="edge flow" d="M490 80 L540 120"></path>
+            <path class="edge flow" d="M490 160 L540 120"></path>
+            <path class="edge flow" d="M660 120 L690 120"></path>
+
+            <circle class="packet" r="4">
+              <animateMotion dur="4s" repeatCount="indefinite" path="M150 120 L200 120 L370 80 L540 120 L690 120"></animateMotion>
+            </circle>
+            <circle class="packet" r="4">
+              <animateMotion dur="4.8s" begin="1.2s" repeatCount="indefinite" path="M150 120 L200 120 L370 160 L540 120 L690 120"></animateMotion>
+            </circle>
+          </svg>
+        </div>
+      </section>
+
+      <section>
+        <h2>Step-by-step flow</h2>
+        <ol>
+          <li>A client resolves the service endpoint via DNS or anycast.</li>
+          <li>The load balancer selects a healthy backend based on policy.</li>
+          <li>The stateless service validates the request and fetches state from cache or storage.</li>
+          <li>The service computes the response and writes state updates if needed.</li>
+          <li>The response returns through the load balancer to the client.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2 id="playground-load-balancing">Playground: Load balancing distribution</h2>
+        <div id="playground-load-balancing-root"></div>
+      </section>
+
+      <section>
+        <h2>Failure modes</h2>
+        <ul>
+          <li>Load balancer misconfiguration or failure causes partial or total outage.</li>
+          <li>Hot keys or skewed traffic create uneven load across replicas.</li>
+          <li>Stateful instances fail before persisting state, causing data loss or session drops.</li>
+          <li>Cache stampedes amplify load on storage during misses or invalidations.</li>
+          <li>Horizontal scaling without shard rebalancing creates hot partitions.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Trade-offs</h2>
+        <ul>
+          <li>Statelessness favors elasticity and fast recovery, but increases dependency on storage and cache tiers.</li>
+          <li>Stateful services reduce per-request latency, but complicate failover and rollout processes.</li>
+          <li>Horizontal scaling improves resilience, but adds coordination overhead and tail-latency risk.</li>
+          <li>L7 routing enables smart traffic shaping, but adds a critical proxy layer and operational complexity.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Real-world usage</h2>
+        <ul>
+          <li>Web frontends and API layers are typically stateless behind L7 load balancers like Envoy or NGINX.</li>
+          <li>Stateful services include databases, queues, and session stores that require replication and sharding.</li>
+          <li>Peer-to-peer patterns appear in BitTorrent-style distribution and WebRTC meshes.</li>
+          <li>Autoscaling patterns are often implemented with Kubernetes HPA in <a href="kubernetes-patterns.html">Kubernetes patterns</a>.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Interview tips</h2>
+        <ul>
+          <li>Start by stating the workload shape and whether state can be externalized.</li>
+          <li>Call out load balancer policy and health checks early.</li>
+          <li>Explain how you would avoid hot partitions and cache stampedes.</li>
+          <li>Tie scaling decisions to SLAs and failure domains, not just throughput.</li>
+        </ul>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div>Built for senior engineers and system designers.</div>
+      <div>Distributed Systems Visual Guide.</div>
+    </footer>
+  </body>
+</html>

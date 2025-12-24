@@ -2,7 +2,7 @@
 
 ## Project Overview
 - This repo hosts a professional distributed-systems visual guide for GitHub Pages.
-- Output must be web-ready Markdown + HTML suitable for direct publication.
+- Output must be web-ready HTML suitable for direct publication.
 - All content must be original, accurate, and production-grade.
 
 ## Content Rules
@@ -11,7 +11,7 @@
 - Cross-link related concepts instead of redefining them.
 
 ## Formatting Rules
-- Use Markdown headings only (H1 to H3).
+- Use HTML headings only (H1 to H3).
 - Use tables for comparisons.
 - Use Mermaid for static diagrams.
 - Use React/D3 only for concepts that benefit from interaction.
