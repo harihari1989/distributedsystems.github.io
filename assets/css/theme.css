@@ -277,6 +277,132 @@ pre.mermaid {
   opacity: 0.6;
 }
 
+.os-playground {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.os-stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.os-step-button {
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text);
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: transform 200ms ease, background 200ms ease;
+}
+
+.os-step-button:hover {
+  transform: translateY(-1px);
+  background: var(--surface-2);
+}
+
+.os-step-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.os-step-label {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.os-node {
+  fill: var(--surface-2);
+  stroke: var(--border);
+  stroke-width: 1.2;
+  transition: fill 200ms ease, stroke 200ms ease;
+}
+
+.os-node.is-active {
+  fill: var(--surface-3);
+  stroke: var(--accent-1);
+}
+
+.os-edge {
+  stroke: var(--border);
+  stroke-width: 1.4;
+  transition: stroke 200ms ease, stroke-width 200ms ease;
+}
+
+.os-edge.is-active {
+  stroke: var(--accent-2);
+  stroke-width: 2;
+}
+
+.db-playground {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.db-stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.db-step-button {
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text);
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: transform 200ms ease, background 200ms ease;
+}
+
+.db-step-button:hover {
+  transform: translateY(-1px);
+  background: var(--surface-2);
+}
+
+.db-step-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.db-step-label {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.db-node {
+  fill: var(--surface-2);
+  stroke: var(--border);
+  stroke-width: 1.2;
+  transition: fill 200ms ease, stroke 200ms ease;
+}
+
+.db-node.is-active {
+  fill: var(--surface-3);
+  stroke: var(--accent-1);
+}
+
+.db-edge {
+  stroke: var(--border);
+  stroke-width: 1.4;
+  transition: stroke 200ms ease, stroke-width 200ms ease;
+}
+
+.db-edge.is-active {
+  stroke: var(--accent-2);
+  stroke-width: 2;
+}
+
 @keyframes viz-pulse {
   0% {
     transform: scale(1);

@@ -22,10 +22,11 @@
         <a href="../index.html">Home</a>
         <a href="compute-patterns.html" class="is-active" aria-current="page">Compute</a>
         <a href="database-architectures.html">Storage</a>
+        <a href="database-patterns.html">Databases</a>
         <a href="consistency-models.html">Consistency</a>
         <a href="networking-patterns.html">Networking</a>
         <a href="kubernetes-patterns.html">Kubernetes</a>
-        <a href="system-design-patterns.html">Interview</a>
+        <a href="operating-systems.html">Operating Systems</a>
       </nav>
       <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
     </header>
@@ -33,7 +34,7 @@
       <h1>Compute Patterns</h1>
 
       <section>
-        <h2>Why this problem exists</h2>
+        <h2>Problem framing</h2>
         <p>
           Distributed systems must serve variable workloads while meeting latency and availability targets.
           Compute patterns define how work is placed, how requests are routed, and how state is managed.
@@ -202,16 +203,6 @@ flowchart LR
           <li>Stateful services include databases, queues, and session stores that require replication and sharding.</li>
           <li>Peer-to-peer patterns appear in BitTorrent-style distribution and WebRTC meshes.</li>
           <li>Autoscaling patterns are often implemented with Kubernetes HPA in <a href="kubernetes-patterns.html">Kubernetes patterns</a>.</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>Interview tips</h2>
-        <ul>
-          <li>Start by stating the workload shape and whether state can be externalized.</li>
-          <li>Call out load balancer policy and health checks early.</li>
-          <li>Explain how you would avoid hot partitions and cache stampedes.</li>
-          <li>Tie scaling decisions to SLAs and failure domains, not just throughput.</li>
         </ul>
       </section>
     </main>
