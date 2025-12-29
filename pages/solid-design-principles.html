@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en" data-color-mode="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SOLID Design Principles | Distributed Systems Visual Guide</title>
+    <link rel="stylesheet" href="../assets/css/theme.css" />
+    <script defer src="../assets/js/toggleTheme.js"></script>
+    <script defer src="../assets/js/site.js"></script>
+    <script defer src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script defer src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script defer src="../assets/js/playgrounds.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script defer src="../assets/js/mermaid-init.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-brand">
+        <a href="../index.html">Distributed Systems Visual Guide</a>
+      </div>
+      <nav class="site-nav">
+        <a href="../index.html">Home</a>
+        <a href="compute-patterns.html">Compute</a>
+        <a href="database-architectures.html">Storage</a>
+        <a href="database-patterns.html">Databases</a>
+        <a href="consistency-models.html">Consistency</a>
+        <a href="networking-patterns.html">Networking</a>
+        <a href="kubernetes-patterns.html">Kubernetes</a>
+        <a href="operating-systems.html">Operating Systems</a>
+        <a href="solid-design-principles.html" class="is-active" aria-current="page">SOLID Design</a>
+      </nav>
+      <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
+    </header>
+    <main>
+      <h1>SOLID Design Principles</h1>
+
+      <section>
+        <h2>Problem framing</h2>
+        <p>
+          Distributed systems run on evolving service codebases, shared libraries, and SDKs that many teams depend on.
+          As requirements change, tight coupling turns small updates into risky, cross-service changes.
+          SOLID provides code-level constraints that keep services adaptable and testable as architectures scale.
+          For service boundary choices and scaling context, see <a href="compute-patterns.html">compute patterns</a>.
+        </p>
+      </section>
+
+      <section>
+        <h2>Core idea / pattern</h2>
+        <p>
+          SOLID is a set of dependency and responsibility rules that reduce change ripple.
+          Each principle frames a problem, prescribes a structural pattern, and clarifies the trade-offs.
+        </p>
+
+        <h3>Single Responsibility Principle (SRP)</h3>
+        <p><strong>Problem:</strong> One module handles multiple concerns, so unrelated changes collide.</p>
+        <p><strong>Pattern:</strong> Split responsibilities so each module has one reason to change.</p>
+        <p><strong>Trade-offs:</strong> More components to manage and wire together.</p>
+        <p><strong>Failure modes:</strong> Over-splitting creates chatty modules and unclear ownership.</p>
+        <p><strong>Example:</strong> Separate pricing calculation from invoice delivery.</p>
+        <pre><code>class PricingService { calculate(order) }
+class InvoiceSender { send(invoice) }
+</code></pre>
+
+        <h3>Open/Closed Principle (OCP)</h3>
+        <p><strong>Problem:</strong> New behaviors require editing stable, high-risk code paths.</p>
+        <p><strong>Pattern:</strong> Extend behavior via new modules or strategies instead of modifying core logic.</p>
+        <p><strong>Trade-offs:</strong> Strategy selection logic can become complex without governance.</p>
+        <p><strong>Failure modes:</strong> Plugin sprawl hides critical behavior behind indirect wiring.</p>
+        <p><strong>Example:</strong> Add a new shipping rule without touching the core dispatcher.</p>
+        <pre><code>interface ShippingRule { quote(order) }
+class ExpeditedRule implements ShippingRule { ... }
+</code></pre>
+
+        <h3>Liskov Substitution Principle (LSP)</h3>
+        <p><strong>Problem:</strong> Subtypes violate the expectations of their base types.</p>
+        <p><strong>Pattern:</strong> Ensure derived types preserve contract behavior and invariants.</p>
+        <p><strong>Trade-offs:</strong> Some inheritance hierarchies become impossible or require redesign.</p>
+        <p><strong>Failure modes:</strong> Runtime failures appear only in specific subtype deployments.</p>
+        <p><strong>Example:</strong> A read-only repository should not inherit from a write-capable base.</p>
+        <pre><code>interface ReadRepo { find(id) }
+interface WriteRepo extends ReadRepo { save(entity) }
+</code></pre>
+
+        <h3>Interface Segregation Principle (ISP)</h3>
+        <p><strong>Problem:</strong> Clients depend on large interfaces they only partially use.</p>
+        <p><strong>Pattern:</strong> Provide smaller, role-specific interfaces.</p>
+        <p><strong>Trade-offs:</strong> More interfaces to discover and document.</p>
+        <p><strong>Failure modes:</strong> Excessive segregation leads to duplication and confusion.</p>
+        <p><strong>Example:</strong> Split read APIs from admin APIs for analytics clients.</p>
+        <pre><code>interface MetricsReader { query(range) }
+interface MetricsAdmin { backfill(job) }
+</code></pre>
+
+        <h3>Dependency Inversion Principle (DIP)</h3>
+        <p><strong>Problem:</strong> High-level policies depend directly on low-level vendor details.</p>
+        <p><strong>Pattern:</strong> Depend on abstractions; implement adapters at the edges.</p>
+        <p><strong>Trade-offs:</strong> Extra indirection and the need for stable contracts.</p>
+        <p><strong>Failure modes:</strong> Weak abstractions leak vendor semantics into core logic.</p>
+        <p><strong>Example:</strong> A billing service depends on a gateway interface, not a single provider SDK.</p>
+        <pre><code>interface PaymentGateway { charge(amount) }
+class StripeGateway implements PaymentGateway { ... }
+</code></pre>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Principle</th>
+              <th>Primary focus</th>
+              <th>Distributed-systems benefit</th>
+              <th>Quick example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>SRP</td>
+              <td>One reason to change</td>
+              <td>Smaller deploy blast radius inside services</td>
+              <td>Split validation from enrichment</td>
+            </tr>
+            <tr>
+              <td>OCP</td>
+              <td>Extend without edits</td>
+              <td>Safer feature rollouts and canaries</td>
+              <td>Add a new routing rule</td>
+            </tr>
+            <tr>
+              <td>LSP</td>
+              <td>Subtype safety</td>
+              <td>Predictable behavior across deployments</td>
+              <td>Writable vs read-only stores</td>
+            </tr>
+            <tr>
+              <td>ISP</td>
+              <td>Small interfaces</td>
+              <td>Less coupling across service boundaries</td>
+              <td>Separate reader and admin APIs</td>
+            </tr>
+            <tr>
+              <td>DIP</td>
+              <td>Abstraction-first dependencies</td>
+              <td>Vendor swaps without core rewrites</td>
+              <td>Gateway adapter for payments</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Architecture diagram</h2>
+        <pre class="mermaid">
+flowchart LR
+  Client[API Handler] --> UseCase[Use Case Service]
+  UseCase --> Port[Domain Port Interface]
+  UseCase --> Policy[Policy Engine]
+  Port --> Adapter[Repository Adapter]
+  Adapter --> DB[(Database)]
+  UseCase --> Notifier[Notifier Interface]
+  Notifier --> Email[Email Adapter]
+        </pre>
+      </section>
+
+      <section>
+        <h2>Step-by-step flow</h2>
+        <ol>
+          <li>Map change hotspots and identify mixed responsibilities.</li>
+          <li>Split modules into focused components with clear ownership.</li>
+          <li>Define small interfaces for each client role.</li>
+          <li>Invert dependencies so policies depend on interfaces, not vendors.</li>
+          <li>Swap adapters per environment and verify behavior via tests.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>Failure modes</h2>
+        <ul>
+          <li>SRP fragmentation creates excessive wiring and unclear data flow.</li>
+          <li>OCP strategies drift without governance, making behavior opaque.</li>
+          <li>LSP violations surface only in production when a subtype is selected.</li>
+          <li>ISP interfaces proliferate without shared discovery or documentation.</li>
+          <li>DIP abstractions change too often, causing churn across services.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Trade-offs</h2>
+        <ul>
+          <li>More indirection and files in exchange for testability and resilience to change.</li>
+          <li>Upfront design effort that reduces regression risk in long-lived systems.</li>
+          <li>Smaller interfaces improve coupling but add coordination overhead.</li>
+          <li>Mocking becomes easier, yet integration testing remains essential.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Real-world usage</h2>
+        <ul>
+          <li>Payment services isolate providers with DIP adapters and swap them by region.</li>
+          <li>Policy engines add rules via OCP to avoid edits in core compliance logic.</li>
+          <li>Analytics clients consume a read-only interface separate from admin tooling.</li>
+          <li>Event processors split ingestion, validation, and enrichment to keep SRP clear.</li>
+          <li>Repository adapters align with storage choices in <a href="database-architectures.html">storage and data patterns</a>.</li>
+        </ul>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div>Built for senior engineers and system designers.</div>
+      <div>Distributed Systems Visual Guide.</div>
+    </footer>
+  </body>
+</html>

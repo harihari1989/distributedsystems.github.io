@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en" data-color-mode="light">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Latency Numbers | Distributed Systems Visual Guide</title>
+    <link rel="stylesheet" href="../assets/css/theme.css" />
+    <script defer src="../assets/js/toggleTheme.js"></script>
+    <script defer src="../assets/js/site.js"></script>
+</head>
+
+<body>
+    <header class="site-header">
+        <div class="site-brand">
+            <a href="../index.html">Distributed Systems Visual Guide</a>
+        </div>
+        <nav class="site-nav">
+            <a href="../index.html">Home</a>
+            <a href="compute-patterns.html">Compute</a>
+            <a href="database-architectures.html">Storage</a>
+            <a href="database-patterns.html">Databases</a>
+            <a href="consistency-models.html">Consistency</a>
+            <a href="networking-patterns.html">Networking</a>
+            <a href="distributed-algorithms.html">Algorithms</a>
+            <a href="latency-numbers.html" class="is-active" aria-current="page">Latency</a>
+            <a href="kubernetes-patterns.html">Kubernetes</a>
+            <a href="operating-systems.html">Operating Systems</a>
+            <a href="solid-design-principles.html">SOLID Design</a>
+        </nav>
+        <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
+    </header>
+    <main>
+        <h1>Latency Numbers Everyone Should Know</h1>
+
+        <section>
+            <h2>The Orders of Magnitude</h2>
+            <p>
+                Derived from Jeff Dean's <a
+                    href="http://static.googleusercontent.com/media/research.google.com/en/us/people/jeff/stanford-295-talk.pdf"
+                    target="_blank">seminal talk</a>, these numbers reveal the staggering performance gaps in systems.
+                A main memory reference is not just "slower" than an L1 cache reference—it is <strong>200x
+                    slower</strong>.
+            </p>
+
+            <div class="card-grid" style="grid-template-columns: 1fr;">
+                <div class="card">
+                    <h3>Humanized Function</h3>
+                    <p>If <strong>1 CPU cycle (0.3 ns)</strong> was <strong>1 second</strong>...</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Operation</th>
+                                <th>Actual Time</th>
+                                <th>"Human" Time</th>
+                                <th>Distance / Comparison</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="background: rgba(16, 185, 129, 0.1);">
+                                <td>L1 Cache Reference</td>
+                                <td>0.5 ns</td>
+                                <td>~1.5 sec</td>
+                                <td>Picking up a pen</td>
+                            </tr>
+                            <tr style="background: rgba(16, 185, 129, 0.05);">
+                                <td>L2 Cache Reference</td>
+                                <td>7 ns</td>
+                                <td>~23 sec</td>
+                                <td>Reading a paragraph</td>
+                            </tr>
+                            <tr>
+                                <td>Main Memory Ref</td>
+                                <td>100 ns</td>
+                                <td>~5.5 min</td>
+                                <td>Making coffee</td>
+                            </tr>
+                            <tr>
+                                <td>Send 2K bytes over 1Gbps</td>
+                                <td>20,000 ns</td>
+                                <td>~18.5 hours</td>
+                                <td>A full work day</td>
+                            </tr>
+                            <tr style="background: rgba(245, 158, 11, 0.1);">
+                                <td>SSD Random Read</td>
+                                <td>150,000 ns</td>
+                                <td>~5.8 days</td>
+                                <td>A vacation</td>
+                            </tr>
+                            <tr>
+                                <td>Roundtrip same datacenter</td>
+                                <td>500,000 ns</td>
+                                <td>~19 days</td>
+                                <td>Month-long project</td>
+                            </tr>
+                            <tr style="background: rgba(239, 68, 68, 0.1);">
+                                <td>Disk Seek</td>
+                                <td>10,000,000 ns</td>
+                                <td>~1 year</td>
+                                <td>A sabbatical</td>
+                            </tr>
+                            <tr style="background: rgba(239, 68, 68, 0.2);">
+                                <td>Ping CA -> Netherlands</td>
+                                <td>150,000,000 ns</td>
+                                <td>~15 years</td>
+                                <td>Raising a child</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Visual Scale</h2>
+            <p>Logarithmic visualisation of latency.</p>
+            <div class="viz">
+                <svg width="100%" height="400" viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+                    <style>
+                        .bar {
+                            height: 20px;
+                            rx: 4;
+                        }
+
+                        .bar-l1 {
+                            fill: var(--status-good);
+                            width: 1px;
+                        }
+
+                        .bar-ram {
+                            fill: var(--accent-1);
+                            width: 20px;
+                        }
+
+                        .bar-ssd {
+                            fill: var(--status-warn);
+                            width: 150px;
+                        }
+
+                        .bar-net {
+                            fill: var(--accent-2);
+                            width: 250px;
+                        }
+
+                        .bar-disk {
+                            fill: var(--status-bad);
+                            width: 600px;
+                        }
+
+                        .label {
+                            fill: var(--text-primary);
+                            font-family: var(--font-mono);
+                            font-size: 12px;
+                        }
+
+                        .grid-line {
+                            stroke: var(--border-medium);
+                            stroke-dasharray: 4;
+                        }
+                    </style>
+
+                    <!-- Simple log bars visualization mock -->
+                    <text x="10" y="30" class="label">L1 Cache (0.5 ns)</text>
+                    <rect x="180" y="15" class="bar bar-l1"></rect>
+
+                    <text x="10" y="70" class="label">RAM (100 ns)</text>
+                    <rect x="180" y="55" class="bar bar-ram"></rect>
+
+                    <text x="10" y="110" class="label">SSD Random (150 µs)</text>
+                    <rect x="180" y="95" class="bar bar-ssd"></rect>
+
+                    <text x="10" y="150" class="label">Datacenter RTT (500 µs)</text>
+                    <rect x="180" y="135" class="bar bar-net"></rect>
+
+                    <text x="10" y="190" class="label">Disk Seek (10 ms)</text>
+                    <rect x="180" y="175" class="bar bar-disk"></rect>
+                </svg>
+                <p style="font-size: 0.8rem; opacity: 0.7;">*Visual representation is illustrative (log-ish scale).</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>Implications for Design</h2>
+            <ul>
+                <li><strong>Avoid Disk Skeeks:</strong> Sequential reads are ~50-100x faster than random seeks.</li>
+                <li><strong>In-Memory Caching:</strong> Saving a roundtrip to the DB (SSD/Disk) is worth thousands of
+                    operations.</li>
+                <li><strong>Data Locality:</strong> Cross-datacenter calls are incredibly expensive. Keep data close to
+                    compute.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Standard Resources</h2>
+            <ul>
+                <li><a
+                        href="http://static.googleusercontent.com/media/research.google.com/en/us/people/jeff/stanford-295-talk.pdf">Jeff
+                        Dean's Slide Deck</a></li>
+                <li><a href="https://gist.github.com/jboner/2841832">Latency Numbers Every Programmer Should Know
+                        (Gist)</a></li>
+            </ul>
+        </section>
+
+    </main>
+    <footer class="site-footer">
+        <div>Built for senior engineers and system designers.</div>
+        <div>Distributed Systems Visual Guide.</div>
+    </footer>
+</body>
+
+</html>
