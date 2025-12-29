@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en" data-color-mode="light">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Distributed Algorithms | Distributed Systems Visual Guide</title>
+  <link rel="stylesheet" href="../assets/css/theme.css" />
+  <script defer src="../assets/js/toggleTheme.js"></script>
+  <script defer src="../assets/js/site.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <script defer src="../assets/js/mermaid-init.js"></script>
+</head>
+
+<body>
+  <header class="site-header">
+    <div class="site-brand">
+      <a href="../index.html">Distributed Systems Visual Guide</a>
+    </div>
+    <nav class="site-nav">
+      <a href="../index.html">Home</a>
+      <a href="compute-patterns.html">Compute</a>
+      <a href="database-architectures.html">Storage</a>
+      <a href="database-patterns.html">Databases</a>
+      <a href="consistency-models.html">Consistency</a>
+      <a href="networking-patterns.html">Networking</a>
+      <a href="distributed-algorithms.html" class="is-active" aria-current="page">Algorithms</a>
+      <a href="kubernetes-patterns.html">Kubernetes</a>
+      <a href="operating-systems.html">Operating Systems</a>
+      <a href="solid-design-principles.html">SOLID Design</a>
+    </nav>
+    <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
+  </header>
+  <main>
+    <h1>Distributed Algorithms</h1>
+
+    <section>
+      <h2>Problem framing</h2>
+      <p>
+        In distributed systems, nodes must agree on values, coordinate actions, and manage leadership without a central
+        authority.
+        Distributed algorithms solve these coordination problems even when networks are unreliable and nodes fail.
+      </p>
+    </section>
+
+    <section>
+      <h2>Leader Election</h2>
+      <p>
+        Leader election is the process of designating a single process as the organizer of some task among several
+        distributed processes (nodes).
+        Before the task is begun, all network nodes are either unaware which node will serve as the "leader" of the
+        task, or unable to communicate with the current coordinator.
+        After a leader election algorithm is run, a single node is established as the designated leader throughout the
+        network.
+      </p>
+
+      <h3>Why do we need a leader?</h3>
+      <ul>
+        <li><strong>Consistency:</strong> A single writer avoids data conflicts.</li>
+        <li><strong>Coordination:</strong> Centralized scheduling or task assignment.</li>
+        <li><strong>Efficiency:</strong> Reduces chatter between nodes for decisions.</li>
+      </ul>
+
+      <h3>Bully Algorithm Visualization</h3>
+      <p>
+        In the Bully Algorithm, the node with the highest ID "bullies" the others into accepting it as leader.
+        If a node notices the leader is dead, it initiates an election.
+      </p>
+
+      <div class="viz">
+        <pre class="mermaid">
+sequenceDiagram
+    participant Node1 as Node 1 (ID: 10)
+    participant Node2 as Node 2 (ID: 20)
+    participant Node3 as Node 3 (ID: 30)
+    
+    Note over Node1: Notices Leader Dead
+    Node1->>Node2: ELECTION
+    Node1->>Node3: ELECTION
+    
+    Node2->>Node1: ALIVE (I am bigger)
+    Node3->>Node1: ALIVE (I am bigger)
+    
+    Note over Node1: Stops, waits
+    
+    Node2->>Node3: ELECTION
+    Node3->>Node2: ALIVE (I am bigger)
+    
+    Note over Node2: Stops, waits
+    
+    Note over Node3: No higher ID nodes
+    Node3->>Node1: COORDINATOR (I am leader)
+    Node3->>Node2: COORDINATOR (I am leader)
+          </pre>
+      </div>
+    </section>
+
+    <section>
+      <h2>Paxos & Consensus</h2>
+      <p>
+        Paxos is a family of protocols for solving consensus in a network of unreliable processors.
+        First published by Leslie Lamport in <a href="https://lamport.azurewebsites.net/pubs/lamport-paxos.pdf">The
+          Part-Time Parliament (1998)</a>, it provides safety (consistency) even when nodes fail or messages are
+        delayed.
+      </p>
+
+      <p>
+        <strong>The Goal:</strong> Agree on a single value proposed by a Proposer. Once a value is chosen, all learners
+        should eventually learn it.
+      </p>
+
+      <h3>Roles in Paxos</h3>
+      <ul>
+        <li><strong>Proposers:</strong> Advocate for a client request. They send proposals to Acceptors.</li>
+        <li><strong>Acceptors:</strong> The voters. They act as the fault-tolerant memory of the protocol. Quorums of
+          Acceptors are required.</li>
+        <li><strong>Learners:</strong> Nodes that act on the chosen value once a quorum has accepted it.</li>
+      </ul>
+
+      <h3>Basic Paxos Phases (Synod Algorithm)</h3>
+      <ol>
+        <li><strong>Phase 1a (Prepare):</strong> Proposer selects a proposal number \( n \) (must be unique and higher
+          than previous) and sends `Prepare(n)` to a quorum of acceptors.</li>
+        <li><strong>Phase 1b (Promise):</strong> Acceptor receives `Prepare(n)`. If \( n > \) any prepared number it has
+          seen:
+          <ul>
+            <li>It promises not to accept any proposals numbered less than \( n \).</li>
+            <li>If it already accepted a proposal, it returns that proposal's value and number.</li>
+          </ul>
+        </li>
+        <li><strong>Phase 2a (Accept):</strong> Proposer receives promises from a quorum.
+          <ul>
+            <li>If any acceptor returned a value, the Proposer MUST adopt the value with the highest proposal number.
+            </li>
+            <li>Otherwise, it can propose its own value \( v \).</li>
+            <li>It sends `Accept(n, v)` to the acceptors.</li>
+          </ul>
+        </li>
+        <li><strong>Phase 2b (Accepted):</strong> Acceptor receives `Accept(n, v)`. It accepts the proposal UNLESS it
+          has already promised to a higher number \( n' > n \).</li>
+      </ol>
+
+      <div class="viz">
+        <pre class="mermaid">
+sequenceDiagram
+    participant P as Proposer
+    participant A1 as Acceptor 1
+    participant A2 as Acceptor 2
+    participant A3 as Acceptor 3
+    
+    Note over P: Phase 1: Prepare (n=100)
+    P->>A1: Prepare(100)
+    P->>A2: Prepare(100)
+    P->>A3: Prepare(100)
+    
+    A1-->>P: Promise(100, null)
+    A2-->>P: Promise(100, null)
+    A3-->>P: Promise(100, null)
+    
+    Note over P: Quorum Reached. No prev val.
+    
+    Note over P: Phase 2: Accept (n=100, v="Blue")
+    P->>A1: Accept(100, "Blue")
+    P->>A2: Accept(100, "Blue")
+    P->>A3: Accept(100, "Blue")
+    
+    A1-->>P: Accepted(100)
+    A2-->>P: Accepted(100)
+    A3-->>P: Accepted(100)
+    
+    Note over P,A3: Value "Blue" is Chosen
+          </pre>
+      </div>
+    </section>
+
+    <section>
+      <h2>Standard Resources</h2>
+      <ul>
+        <li><a href="https://lamport.azurewebsites.net/pubs/paxos-simple.pdf">Paxos Made Simple</a> - Leslie Lamport
+          (2001)</li>
+        <li><a href="https://raft.github.io/raft.pdf">In Search of an Understandable Consensus Algorithm (Raft)</a> -
+          Diego Ongaro and John Ousterhout (2014)</li>
+        <li><a href="https://dataintensive.net/">Designing Data-Intensive Applications</a> - Martin Kleppmann (Standard
+          textbook)</li>
+      </ul>
+    </section>
+
+  </main>
+  <footer class="site-footer">
+    <div>Built for senior engineers and system designers.</div>
+    <div>Distributed Systems Visual Guide.</div>
+  </footer>
+</body>
+
+</html>
