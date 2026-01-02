@@ -1,0 +1,1735 @@
+<!doctype html>
+<html lang="en" data-color-mode="light">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>System Design Interviews | Distributed Systems Visual Guide</title>
+  <link rel="stylesheet" href="../assets/css/theme.css" />
+  <script defer src="../assets/js/toggleTheme.js"></script>
+  <script defer src="../assets/js/site.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <script defer src="../assets/js/mermaid-init.js"></script>
+  <style>
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+      text-align: left;
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border-light);
+      vertical-align: top;
+    }
+
+    .comparison-table th {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      background: var(--bg-tertiary);
+    }
+
+    .comparison-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .callout {
+      padding: 1rem 1.2rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-light);
+      background: var(--bg-secondary);
+      box-shadow: var(--shadow-sm);
+      margin: 1.5rem 0;
+    }
+
+    .callout--tip {
+      border-left: 4px solid var(--status-good);
+    }
+
+    .callout--warn {
+      border-left: 4px solid var(--status-warn);
+    }
+
+    .callout--when {
+      border-left: 4px solid var(--accent-primary);
+    }
+
+    .lens {
+      display: grid;
+      gap: 0.75rem;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      margin: 1.25rem 0 2rem;
+    }
+
+    .lens-item {
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      padding: 0.9rem 1rem;
+      background: var(--bg-secondary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .lens-item strong {
+      display: block;
+      margin-bottom: 0.4rem;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text-tertiary);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .stepper {
+      display: grid;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .stepper-buttons {
+      display: grid;
+      gap: 0.75rem;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    }
+
+    .step-button {
+      border: 1px solid var(--border-medium);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      padding: 0.65rem 0.85rem;
+      border-radius: 999px;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .step-button:hover {
+      border-color: var(--accent-primary);
+      background: var(--bg-tertiary);
+    }
+
+    .step-button.is-active {
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      border-color: var(--accent-primary);
+      color: var(--text-primary);
+      box-shadow: var(--shadow-md);
+    }
+
+    .stepper-panel {
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      background: var(--bg-secondary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .stepper-panel[hidden] {
+      display: none;
+    }
+
+    .grid-blocks {
+      display: grid;
+      gap: 1.5rem;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+
+    .micro-card {
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      padding: 1rem 1.2rem;
+      background: var(--bg-secondary);
+      box-shadow: var(--shadow-sm);
+    }
+  </style>
+</head>
+
+<body>
+  <header class="site-header">
+    <div class="site-brand">
+      <a href="../index.html">Distributed Systems Visual Guide</a>
+    </div>
+    <nav class="site-nav">
+      <a href="../index.html">Home</a>
+      <a href="system-design-interviews.html" class="is-active" aria-current="page">System Design</a>
+      <a href="distributed-algorithms.html">Algorithms</a>
+      <a href="compute-patterns.html">Compute</a>
+      <a href="database-architectures.html">Storage</a>
+      <a href="database-patterns.html">Databases</a>
+      <a href="distributed-transactions.html">Transactions</a>
+      <a href="consistency-models.html">Consistency</a>
+      <a href="networking-patterns.html">Networking</a>
+      <a href="latency-numbers.html">Latency</a>
+      <a href="kubernetes-patterns.html">Kubernetes</a>
+      <a href="operating-systems.html">Operating Systems</a>
+      <a href="solid-design-principles.html">SOLID Design</a>
+    </nav>
+    <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
+  </header>
+  <main>
+    <h1>System Design Interview Visual Guide</h1>
+
+    <section>
+      <h2>Problem framing</h2>
+      <p>
+        System design interviews test how you reason about ambiguous goals, trade-offs, and scale while communicating a
+        clear plan. Structure matters more than memorizing components because the interviewer wants to see your
+        decision-making process. Knowing components is table stakes; designing systems means turning requirements into
+        APIs, data models, and failure-aware architecture.
+      </p>
+
+      <div class="callout callout--tip">
+        <p><strong>Tip:</strong> Anchor everything to goals, constraints, and failure modes before you draw boxes.</p>
+      </div>
+
+      <h3>System design mind map</h3>
+      <pre class="mermaid">
+mindmap
+  root((System Design Interview))
+    Expectations
+      Structured thinking
+      Trade-off reasoning
+      Clear communication
+    Artifacts
+      Requirements
+      APIs
+      Data model
+      Architecture
+    Risks
+      Bottlenecks
+      Failure modes
+      Cost
+    Validation
+      Scale math
+      Testing
+      Observability
+      </pre>
+
+      <h3>Key interview expectations</h3>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Signal</th>
+            <th>How you show it</th>
+            <th>Red flag</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Structured thinking</td>
+            <td>State assumptions, define scope, iterate in layers.</td>
+            <td>Jumping straight into components.</td>
+          </tr>
+          <tr>
+            <td>Trade-off reasoning</td>
+            <td>Compare options with pros, cons, and failure modes.</td>
+            <td>One-size-fits-all answers.</td>
+          </tr>
+          <tr>
+            <td>Scale intuition</td>
+            <td>Back-of-the-envelope math for QPS, storage, bandwidth.</td>
+            <td>No sizing or latency awareness.</td>
+          </tr>
+          <tr>
+            <td>Reliability thinking</td>
+            <td>Call out bottlenecks, retries, and failover strategy.</td>
+            <td>Single points of failure ignored.</td>
+          </tr>
+          <tr>
+            <td>Communication</td>
+            <td>Summarize choices and invite feedback.</td>
+            <td>Long monologues without checkpoints.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Core idea / pattern</h2>
+      <p>
+        System design interviews come in distinct formats. Each type expects different artifacts, but the underlying
+        pattern stays the same: clarify, design, validate, and discuss trade-offs.
+      </p>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Interview type</th>
+            <th>Example problems</th>
+            <th>Primary artifacts</th>
+            <th>What interviewers look for</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Product design</td>
+            <td>Chat app, social feed, ride-sharing</td>
+            <td>APIs, data model, architecture flow</td>
+            <td>End-to-end reasoning and prioritization</td>
+          </tr>
+          <tr>
+            <td>Infrastructure design</td>
+            <td>Rate limiter, message queue, cache</td>
+            <td>Protocols, throughput, failure handling</td>
+            <td>Reliability and performance trade-offs</td>
+          </tr>
+          <tr>
+            <td>Object-oriented design</td>
+            <td>Parking lot, elevator system</td>
+            <td>Classes, interfaces, responsibilities</td>
+            <td>Clean abstractions and SOLID discipline</td>
+          </tr>
+          <tr>
+            <td>Frontend system design</td>
+            <td>Spreadsheet, video editor</td>
+            <td>State model, rendering strategy</td>
+            <td>UI performance and data flow clarity</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Product design</h3>
+      <p>
+        Product design questions ask you to build a complete system around user flows, APIs, and data models while
+        scaling for real usage. Emphasize the user journey and show how backend decisions map to product goals.
+      </p>
+      <p><strong>Examples:</strong> Chat app, social feed, ride-sharing app.</p>
+      <p><strong>Interviewer focus:</strong> API clarity, data model fit, scale strategy, and safety against abuse.</p>
+      <pre class="mermaid">
+flowchart LR
+  Users --> API[API Gateway]
+  API --> Auth[Auth + Rate Limits]
+  Auth --> Services[Product Services]
+  Services --> Cache[(Cache)]
+  Services --> DB[(Primary DB)]
+  Services --> Feed[Feed Builder]
+  Feed --> Cache
+      </pre>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Ambiguous product goals with scale and latency constraints.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Start from user flows, derive APIs and data model, then scale the critical path.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Feature scope vs. simplicity, freshness vs. cost, latency vs. correctness.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Ignoring abuse, missing data model, or scaling the wrong path.
+        </div>
+      </div>
+
+      <h3>Infrastructure design</h3>
+      <p>
+        Infrastructure questions isolate a core primitive like rate limiting or queues. Show throughput math, failure
+        handling, and how correctness changes under load. Tie details to consistency models from
+        <a href="consistency-models.html">consistency models</a>.
+      </p>
+      <p><strong>Examples:</strong> Rate limiter, message queue, distributed cache.</p>
+      <p><strong>Interviewer focus:</strong> Performance budgets, durability guarantees, and graceful degradation.</p>
+      <pre class="mermaid">
+flowchart LR
+  Client --> Edge[Edge Gateway]
+  Edge --> Limiter[Token Bucket]
+  Limiter --> Service[Backend Service]
+  Limiter --> Metrics[Metrics + Alerts]
+      </pre>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Protect downstream systems while sustaining high throughput.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Enforce limits at the edge, record usage, and surface backpressure.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Accuracy vs. latency, global fairness vs. local autonomy.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Single limiter bottleneck or inconsistent limits across regions.
+        </div>
+      </div>
+
+      <h3>Object-oriented design</h3>
+      <p>
+        Object-oriented design interviews focus on classes, responsibilities, and interactions. Emphasize clear
+        boundaries, testability, and evolvability. Cross-link SOLID principles from
+        <a href="solid-design-principles.html">SOLID design</a>.
+      </p>
+      <p><strong>Examples:</strong> Parking lot, elevator system.</p>
+      <p><strong>Interviewer focus:</strong> Interfaces, encapsulation, and extension points.</p>
+      <pre class="mermaid">
+classDiagram
+  class ParkingLot {
+    +int capacity
+    +park()
+    +leave()
+  }
+  class Level {
+    +int levelNumber
+  }
+  class Spot {
+    +SpotType type
+    +bool occupied
+  }
+  class Ticket {
+    +string id
+    +timestamp startTime
+  }
+  ParkingLot "1" --> "many" Level
+  Level "1" --> "many" Spot
+  Ticket --> Spot
+      </pre>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Model domain objects with clean responsibilities and extensibility.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Define core entities, interfaces, and interactions before edge cases.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Flexibility vs. complexity, abstraction vs. simplicity.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          God objects, leaky abstractions, or unclear ownership.
+        </div>
+      </div>
+
+      <h3>Frontend system design</h3>
+      <p>
+        Frontend design tests how you structure UI, state, and rendering while meeting performance goals. Show data
+        flow, caching strategy, and how you handle large datasets. Connect performance intuition with
+        <a href="latency-numbers.html">latency numbers</a>.
+      </p>
+      <p><strong>Examples:</strong> Spreadsheet, video editor.</p>
+      <p><strong>Interviewer focus:</strong> State management, rendering strategy, and user-perceived latency.</p>
+      <pre class="mermaid">
+flowchart LR
+  UI[UI Components] --> Store[State Store]
+  Store --> Renderer[Virtualized Rendering]
+  Renderer --> UI
+  Store --> Sync[Sync Layer]
+  Sync --> API[Backend APIs]
+  Store --> Cache[(Local Cache)]
+      </pre>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Maintain interactive performance under heavy UI state.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Centralize state, virtualize rendering, and sync incrementally.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Client complexity vs. smooth UX, offline support vs. data freshness.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Re-render storms, memory leaks, or stale UI state.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Architecture diagram</h2>
+      <p>
+        Use a repeatable system design canvas that communicates progression from requirements to reliability.
+      </p>
+      <pre class="mermaid">
+flowchart TB
+  Requirements[Requirements + Constraints] --> APIs[API Design]
+  APIs --> Data[Data Model]
+  Data --> Core[Core Services]
+  Core --> Scale[Scaling Strategy]
+  Scale --> Reliability[Reliability + Failure Modes]
+  Reliability --> Tradeoffs[Trade-offs + Alternatives]
+  Tradeoffs --> Wrap[Summary + Next Steps]
+      </pre>
+      <div class="callout callout--tip">
+        <p><strong>Tip:</strong> Draw in layers: request flow first, then data, then scale and reliability.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Step-by-step flow</h2>
+      <p>
+        Follow a predictable interview flow. Keep each step short, confirm with the interviewer, then move forward.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  Clarify[Clarify Requirements] --> API[Define APIs]
+  API --> Data[Model Data]
+  Data --> Sketch[Sketch Architecture]
+  Sketch --> Bottlenecks[Identify Bottlenecks]
+  Bottlenecks --> Optimize[Optimize + Trade-offs]
+  Optimize --> Summary[Summarize + Risks]
+      </pre>
+
+      <div class="callout callout--warn">
+        <p><strong>Warning:</strong> Diving into scaling before requirements is the fastest way to misdesign the system.</p>
+      </div>
+
+      <div class="stepper" data-stepper>
+        <div class="stepper-buttons" role="tablist">
+          <button class="step-button is-active" type="button" data-step="clarify" aria-pressed="true">1. Clarify</button>
+          <button class="step-button" type="button" data-step="api" aria-pressed="false">2. APIs</button>
+          <button class="step-button" type="button" data-step="data" aria-pressed="false">3. Data model</button>
+          <button class="step-button" type="button" data-step="architecture" aria-pressed="false">4. Architecture</button>
+          <button class="step-button" type="button" data-step="scale" aria-pressed="false">5. Scale</button>
+          <button class="step-button" type="button" data-step="tradeoffs" aria-pressed="false">6. Trade-offs</button>
+        </div>
+        <div class="stepper-panel is-active" data-step-panel="clarify">
+          <h3>Clarify requirements</h3>
+          <p>
+            Separate functional requirements (what the system does) from non-functional requirements (latency,
+            availability, cost). State assumptions and confirm constraints.
+          </p>
+          <div class="lens">
+            <div class="lens-item">
+              <strong>Problem</strong>
+              Ambiguity hides the real scope of the problem.
+            </div>
+            <div class="lens-item">
+              <strong>Pattern</strong>
+              Ask scoped questions and define success metrics.
+            </div>
+            <div class="lens-item">
+              <strong>Trade-offs</strong>
+              Scope breadth vs. depth of the solution.
+            </div>
+            <div class="lens-item">
+              <strong>Failure modes</strong>
+              Solving the wrong problem or missing constraints.
+            </div>
+          </div>
+        </div>
+        <div class="stepper-panel" data-step-panel="api" hidden>
+          <h3>Define APIs</h3>
+          <p>
+            Outline the core endpoints and data contracts. APIs should reflect user flows and rate limits.
+          </p>
+          <div class="lens">
+            <div class="lens-item">
+              <strong>Problem</strong>
+              Unclear APIs lead to unclear data and architecture.
+            </div>
+            <div class="lens-item">
+              <strong>Pattern</strong>
+              Start with the most common user actions and design around them.
+            </div>
+            <div class="lens-item">
+              <strong>Trade-offs</strong>
+              Chatty APIs vs. larger payloads, flexibility vs. consistency.
+            </div>
+            <div class="lens-item">
+              <strong>Failure modes</strong>
+              Missing endpoints or poor versioning strategy.
+            </div>
+          </div>
+        </div>
+        <div class="stepper-panel" data-step-panel="data" hidden>
+          <h3>Model data</h3>
+          <p>
+            Choose the storage model that matches access patterns. Consider indexes and hot keys early. See
+            <a href="database-patterns.html">database patterns</a> for deeper options.
+          </p>
+          <div class="lens">
+            <div class="lens-item">
+              <strong>Problem</strong>
+              Data model mismatches cause slow queries and scaling pain.
+            </div>
+            <div class="lens-item">
+              <strong>Pattern</strong>
+              Model the read path first, then the write path.
+            </div>
+            <div class="lens-item">
+              <strong>Trade-offs</strong>
+              Normalization vs. duplication, flexibility vs. consistency.
+            </div>
+            <div class="lens-item">
+              <strong>Failure modes</strong>
+              Hot partitions, unbounded joins, or missing indexes.
+            </div>
+          </div>
+        </div>
+        <div class="stepper-panel" data-step-panel="architecture" hidden>
+          <h3>Sketch architecture</h3>
+          <p>
+            Draw the request flow and major services. Identify trusted boundaries, caches, and async processing.
+          </p>
+          <div class="lens">
+            <div class="lens-item">
+              <strong>Problem</strong>
+              Systems fail when critical paths are unclear.
+            </div>
+            <div class="lens-item">
+              <strong>Pattern</strong>
+              Start with a single-region, happy-path flow, then expand.
+            </div>
+            <div class="lens-item">
+              <strong>Trade-offs</strong>
+              Simplicity vs. isolation, sync vs. async flows.
+            </div>
+            <div class="lens-item">
+              <strong>Failure modes</strong>
+              Over-decomposition or missing key dependencies.
+            </div>
+          </div>
+        </div>
+        <div class="stepper-panel" data-step-panel="scale" hidden>
+          <h3>Scale and reliability</h3>
+          <p>
+            Identify bottlenecks, add caching, sharding, and replication. Tie to availability goals. See
+            <a href="database-architectures.html">storage and data patterns</a> for more detail.
+          </p>
+          <div class="lens">
+            <div class="lens-item">
+              <strong>Problem</strong>
+              Scale changes system behavior and failure modes.
+            </div>
+            <div class="lens-item">
+              <strong>Pattern</strong>
+              Scale the hottest path first and guard with backpressure.
+            </div>
+            <div class="lens-item">
+              <strong>Trade-offs</strong>
+              Cost vs. latency, consistency vs. availability.
+            </div>
+            <div class="lens-item">
+              <strong>Failure modes</strong>
+              Cache stampedes, queue backlog, or replication lag.
+            </div>
+          </div>
+        </div>
+        <div class="stepper-panel" data-step-panel="tradeoffs" hidden>
+          <h3>Trade-offs and wrap-up</h3>
+          <p>
+            Compare alternatives, call out failure modes, and summarize the core architecture. End with a clear recap.
+          </p>
+          <div class="lens">
+            <div class="lens-item">
+              <strong>Problem</strong>
+              Interviews end early when trade-offs are missing.
+            </div>
+            <div class="lens-item">
+              <strong>Pattern</strong>
+              Provide options and justify your choice based on constraints.
+            </div>
+            <div class="lens-item">
+              <strong>Trade-offs</strong>
+              Performance vs. complexity, cost vs. latency.
+            </div>
+            <div class="lens-item">
+              <strong>Failure modes</strong>
+              No summary or no link back to requirements.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Failure modes</h2>
+      <p>
+        These interview failure modes show up repeatedly. Catch them early and correct course out loud.
+      </p>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Failure mode</th>
+            <th>Interview symptom</th>
+            <th>Recovery move</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Overengineering</td>
+            <td>Complex microservices for a simple use case.</td>
+            <td>Scale back to a minimal architecture first.</td>
+          </tr>
+          <tr>
+            <td>Ignoring constraints</td>
+            <td>Latency, cost, or region limits missing.</td>
+            <td>Re-state constraints and align with goals.</td>
+          </tr>
+          <tr>
+            <td>Poor communication</td>
+            <td>Long monologue without validation.</td>
+            <td>Summarize and confirm after each step.</td>
+          </tr>
+          <tr>
+            <td>No data model</td>
+            <td>APIs and services with no schema.</td>
+            <td>Sketch entities and access patterns.</td>
+          </tr>
+          <tr>
+            <td>Missing bottlenecks</td>
+            <td>No hotspot or capacity analysis.</td>
+            <td>Estimate QPS and call out the hot path.</td>
+          </tr>
+          <tr>
+            <td>Reliability gaps</td>
+            <td>Single points of failure or no retries.</td>
+            <td>Add redundancy and failure handling.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout--warn">
+        <p><strong>Warning:</strong> If you do not mention failure modes, the interviewer will assume you missed them.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Trade-offs</h2>
+      <p>
+        Use the following concepts and patterns to frame trade-offs. When you need deeper foundations, cross-link to
+        <a href="networking-patterns.html">networking patterns</a>,
+        <a href="database-architectures.html">storage and data patterns</a>, and
+        <a href="consistency-models.html">consistency models</a>.
+      </p>
+
+      <h3>Networking basics</h3>
+      <p>
+        Latency is the time per request, while throughput is the total work per second. Load balancing keeps throughput
+        stable and protects tail latency by smoothing hot spots. See more in
+        <a href="networking-patterns.html">networking patterns</a> and
+        <a href="latency-numbers.html">latency numbers</a>.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  Users --> LB[Load Balancer]
+  LB --> S1[Service A]
+  LB --> S2[Service B]
+  S1 --> Cache[(Cache)]
+  S2 --> Cache
+  Cache --> DB[(Database)]
+      </pre>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Focus</th>
+            <th>Optimize for</th>
+            <th>Risk</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Latency</td>
+            <td>Fewer hops, caching, locality</td>
+            <td>Over-provisioning cost</td>
+          </tr>
+          <tr>
+            <td>Throughput</td>
+            <td>Parallelism, batching, async work</td>
+            <td>Queue buildup and tail spikes</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          User-facing systems need predictable latency under load.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Distribute traffic with load balancing and localize data.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Lower latency often increases cost and complexity.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Hot spots, retry storms, or cascading timeouts.
+        </div>
+      </div>
+      <div class="callout callout--when">
+        <p><strong>When to use:</strong> Any stateless service behind a shared entry point or gateway.</p>
+      </div>
+
+      <h3>Data modeling</h3>
+      <p>
+        Start from read and write access patterns to choose SQL or NoSQL. Avoid redefining CAP here; refer to
+        <a href="consistency-models.html">consistency models</a> for the deeper trade-offs.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  Access[Access Patterns] --> SQL[Relational Model]
+  Access --> NoSQL[NoSQL Model]
+  SQL --> Joins[Joins + Transactions]
+  NoSQL --> Documents[Documents + Key-Value]
+      </pre>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Attribute</th>
+            <th>SQL</th>
+            <th>NoSQL</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Schema</td>
+            <td>Rigid, normalized</td>
+            <td>Flexible, denormalized</td>
+          </tr>
+          <tr>
+            <td>Consistency</td>
+            <td>Strong by default</td>
+            <td>Configurable, often eventual</td>
+          </tr>
+          <tr>
+            <td>Scaling</td>
+            <td>Harder horizontal scaling</td>
+            <td>Scale-out friendly</td>
+          </tr>
+          <tr>
+            <td>Query style</td>
+            <td>Joins and analytics</td>
+            <td>Simple access patterns</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Misaligned schema causes slow queries and fragile scale.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Choose data model based on dominant query paths.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Flexibility vs. transactional guarantees.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Hot partitions, slow joins, or inconsistent reads.
+        </div>
+      </div>
+      <div class="callout callout--when">
+        <p><strong>When to use:</strong> Early in the interview when defining API contracts and storage choices.</p>
+      </div>
+
+      <h3>Caching</h3>
+      <p>
+        Caching reduces latency and load, but it introduces staleness and invalidation risks. Use cache-aside for
+        read-heavy flows and write-through for consistent reads. Learn more in
+        <a href="database-architectures.html">storage and data patterns</a>.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  subgraph CacheAside
+    ClientA[Client] --> ServiceA[Service]
+    ServiceA --> CacheA[(Cache)]
+    CacheA -->|Miss| DBA[(Database)]
+    DBA --> CacheA
+  end
+  subgraph WriteThrough
+    ClientB[Client] --> ServiceB[Service]
+    ServiceB --> CacheB[(Cache)]
+    CacheB --> DBB[(Database)]
+  end
+      </pre>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Strategy</th>
+            <th>Strength</th>
+            <th>Risk</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Cache-aside</td>
+            <td>Simple, flexible</td>
+            <td>Cold-start misses, stampedes</td>
+          </tr>
+          <tr>
+            <td>Write-through</td>
+            <td>Consistent cache</td>
+            <td>Write latency overhead</td>
+          </tr>
+          <tr>
+            <td>TTL based</td>
+            <td>Bounds staleness</td>
+            <td>Eviction spikes</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Repeated reads overload the database and raise latency.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Cache hot data close to the service or client.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Freshness vs. speed, cache size vs. cost.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Stampedes, stale reads, or cache inconsistency.
+        </div>
+      </div>
+      <div class="callout callout--when">
+        <p><strong>When to use:</strong> Read-heavy workloads with predictable hot keys or repeated queries.</p>
+      </div>
+
+      <h3>Sharding</h3>
+      <p>
+        Sharding splits data across nodes to scale write throughput. Hash sharding balances load, while range sharding
+        supports range queries. See the full detail in <a href="database-architectures.html">storage and data patterns</a>.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  Router[Shard Router] --> Hash[Hash Based]
+  Router --> Range[Range Based]
+  Hash --> ShardA[(Shard A)]
+  Hash --> ShardB[(Shard B)]
+  Range --> ShardC[(Shard C)]
+  Range --> ShardD[(Shard D)]
+      </pre>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Approach</th>
+            <th>Strength</th>
+            <th>Risk</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Hash-based</td>
+            <td>Even distribution</td>
+            <td>Range queries are hard</td>
+          </tr>
+          <tr>
+            <td>Range-based</td>
+            <td>Range queries fast</td>
+            <td>Hot ranges and skew</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Single-node storage cannot handle write volume.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Partition data by key to distribute write load.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Balanced load vs. query flexibility.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Hot shards, resharding pain, or cross-shard joins.
+        </div>
+      </div>
+      <div class="callout callout--when">
+        <p><strong>When to use:</strong> Write-heavy systems or datasets too large for one node.</p>
+      </div>
+
+      <h3>CAP theorem</h3>
+      <p>
+        CAP highlights the trade-off between consistency and availability during network partitions. The deeper theory
+        lives in <a href="consistency-models.html">consistency models</a>; here we focus on interview framing.
+      </p>
+      <pre class="mermaid">
+flowchart TD
+  C[Consistency] --- A[Availability]
+  A --- P[Partition Tolerance]
+  P --- C
+      </pre>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Choice</th>
+            <th>Strength</th>
+            <th>Risk</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>CP systems</td>
+            <td>Strong consistency under partitions</td>
+            <td>Lower availability during faults</td>
+          </tr>
+          <tr>
+            <td>AP systems</td>
+            <td>Always available</td>
+            <td>Stale or conflicting data</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Partitions force a choice between correctness and uptime.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Pick the guarantee that matches user expectations.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Strong consistency vs. availability under partition.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Stale reads or rejected writes during outages.
+        </div>
+      </div>
+      <div class="callout callout--when">
+        <p><strong>When to use:</strong> Anytime you cross regions or rely on replicated data.</p>
+      </div>
+
+      <h3>Indexing</h3>
+      <p>
+        Indexes speed reads by trading off write amplification. Knowing when to index is a common interview inflection
+        point, especially when query patterns evolve.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  Write[Write Request] --> Index[Index Update]
+  Index --> Storage[(Storage)]
+  Read[Read Request] --> Index
+  Index --> Storage
+      </pre>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Strategy</th>
+            <th>Strength</th>
+            <th>Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Read-optimized indexes</td>
+            <td>Fast queries</td>
+            <td>Higher write overhead</td>
+          </tr>
+          <tr>
+            <td>Write-optimized storage</td>
+            <td>Fast ingestion</td>
+            <td>Slower reads, compaction cost</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Queries become too slow as data grows.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Add indexes aligned with the hot query paths.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Read speed vs. write cost and storage overhead.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Over-indexing or missing composite keys.
+        </div>
+      </div>
+      <div class="callout callout--when">
+        <p><strong>When to use:</strong> Read-heavy workloads where latency targets are strict.</p>
+      </div>
+
+      <h3>Scalability numbers</h3>
+      <p>
+        Estimating QPS, storage, and latency budgets keeps designs grounded. Use the quick math below and link to
+        <a href="latency-numbers.html">latency numbers</a> for realistic baselines.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  Users[User Count] --> QPS[Requests per Second]
+  QPS --> Storage[Storage Growth]
+  QPS --> Bandwidth[Bandwidth]
+  Bandwidth --> Latency[Latency Budget]
+      </pre>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Rule of thumb</th>
+            <th>Use in interview</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>QPS</td>
+            <td>(DAU * requests per day) / 86400</td>
+            <td>Size services and caches</td>
+          </tr>
+          <tr>
+            <td>Storage</td>
+            <td>Items * bytes per item * retention</td>
+            <td>Estimate shard counts</td>
+          </tr>
+          <tr>
+            <td>Latency</td>
+            <td>Budget per hop (p95 or p99)</td>
+            <td>Find bottlenecks</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Without numbers, trade-offs are vague.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Estimate the hot path and scale the bottleneck.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Precision vs. speed, overprovisioning vs. risk.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Under-sizing or ignoring peak traffic.
+        </div>
+      </div>
+      <div class="callout callout--when">
+        <p><strong>When to use:</strong> Right after requirements to validate feasibility.</p>
+      </div>
+
+      <h3>Fan-out and fan-in</h3>
+      <p>
+        Fan-out spreads work to multiple systems; fan-in aggregates results. It is common in feed builders and search.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  Request --> FanOut[Fan-out]
+  FanOut --> WorkerA[Worker A]
+  FanOut --> WorkerB[Worker B]
+  WorkerA --> FanIn[Fan-in]
+  WorkerB --> FanIn
+  FanIn --> Response
+      </pre>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          One request requires data from many services.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Parallelize work and aggregate results.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Parallelism vs. coordination overhead.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Slowest worker sets tail latency.
+        </div>
+      </div>
+
+      <h3>Queue-based async processing</h3>
+      <p>
+        Queues decouple producers and consumers, smoothing traffic spikes. Use this when writes outpace downstream
+        processing.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  API --> Queue[(Queue)]
+  Queue --> Worker[Worker Fleet]
+  Worker --> Store[(Storage)]
+  Worker --> DLQ[Dead Letter Queue]
+      </pre>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Synchronous processing creates latency spikes.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Buffer work in a queue and scale workers.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Throughput vs. end-to-end latency.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Queue backlog and retry storms.
+        </div>
+      </div>
+
+      <h3>Leader-follower</h3>
+      <p>
+        A leader coordinates writes and followers replicate. This pattern appears in databases and distributed
+        coordination. Link to <a href="distributed-algorithms.html">distributed algorithms</a> for deeper mechanics.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  Client --> Leader[Leader]
+  Leader --> F1[Follower 1]
+  Leader --> F2[Follower 2]
+  F1 --> Client
+  F2 --> Client
+      </pre>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Need consistent writes with replicated reads.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Serialize writes through a leader, replicate to followers.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Consistency vs. write latency and failover time.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Leader failure or replication lag.
+        </div>
+      </div>
+
+      <h3>Read replicas</h3>
+      <p>
+        Read replicas scale read throughput by offloading queries. They introduce staleness and require careful routing.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  Client --> Router[Read Router]
+  Router --> Primary[(Primary)]
+  Router --> Replica1[(Replica 1)]
+  Router --> Replica2[(Replica 2)]
+      </pre>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Read load exceeds primary capacity.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Replicate data and direct reads to replicas.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Throughput vs. consistency lag.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Stale reads or replica drift.
+        </div>
+      </div>
+
+      <h3>Event-driven pipelines</h3>
+      <p>
+        Event-driven pipelines enable loose coupling and scalable processing. Events travel through a bus to services
+        that handle them asynchronously.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  Producer --> Bus[(Event Bus)]
+  Bus --> ConsumerA[Consumer A]
+  Bus --> ConsumerB[Consumer B]
+  ConsumerA --> StoreA[(Storage)]
+  ConsumerB --> StoreB[(Storage)]
+      </pre>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Many services react to the same activity.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Emit events and let consumers process independently.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Flexibility vs. eventual consistency.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Lost events or inconsistent consumer state.
+        </div>
+      </div>
+
+      <h3>Long-running jobs</h3>
+      <p>
+        Long-running jobs handle tasks like media processing or analytics. They need idempotent workers and checkpoints.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  Client --> API[Job API]
+  API --> Queue[(Job Queue)]
+  Queue --> Worker[Workers]
+  Worker --> Checkpoint[(Checkpoint Store)]
+  Worker --> Result[(Result Store)]
+      </pre>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Tasks exceed request timeouts or need retries.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Queue work, checkpoint progress, and retry safely.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Reliability vs. operational complexity.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Duplicate work or lost checkpoints.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Real-world usage</h2>
+      <p>
+        These walkthroughs illustrate how top engineers structure end-to-end designs. Use them as practice templates.
+      </p>
+
+      <h3>Design Twitter / X</h3>
+      <p>
+        Focus on fan-out, timelines, and high read throughput. Connect to caching and queue patterns above.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  Client --> API[API Gateway]
+  API --> Timeline[Timeline Service]
+  Timeline --> Cache[(Timeline Cache)]
+  Timeline --> Store[(Tweet Store)]
+  Timeline --> Fanout[Fan-out Workers]
+  Fanout --> Cache
+      </pre>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Step</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Requirements</td>
+            <td>Read-heavy, low latency, high write fan-out.</td>
+          </tr>
+          <tr>
+            <td>API design</td>
+            <td>Post tweet, follow, get timeline, get tweet.</td>
+          </tr>
+          <tr>
+            <td>Data model</td>
+            <td>Tweets, follows, timelines, media metadata.</td>
+          </tr>
+          <tr>
+            <td>Scaling strategy</td>
+            <td>Fan-out on write, cache timelines, read replicas.</td>
+          </tr>
+          <tr>
+            <td>Bottlenecks</td>
+            <td>Hot accounts, timeline rebuilds, cache invalidation.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Deliver personalized feeds at global scale.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Precompute timelines and cache aggressively.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Freshness vs. read latency, cost vs. fan-out scale.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Feed lag, cache stampedes, or fan-out backlogs.
+        </div>
+      </div>
+
+      <h3>Design WhatsApp</h3>
+      <p>
+        Emphasize low latency messaging, delivery guarantees, and fan-out to many recipients.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  Client --> Gateway[Messaging Gateway]
+  Gateway --> Router[Message Router]
+  Router --> Queue[(Delivery Queue)]
+  Queue --> Worker[Delivery Worker]
+  Worker --> Store[(Message Store)]
+  Worker --> Recipient[Recipient Devices]
+      </pre>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Step</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Requirements</td>
+            <td>Low latency, delivery receipts, offline support.</td>
+          </tr>
+          <tr>
+            <td>API design</td>
+            <td>Send message, fetch history, ack delivery.</td>
+          </tr>
+          <tr>
+            <td>Data model</td>
+            <td>Messages, conversations, device sessions.</td>
+          </tr>
+          <tr>
+            <td>Scaling strategy</td>
+            <td>Queue-based delivery, connection fan-out, shard by user.</td>
+          </tr>
+          <tr>
+            <td>Bottlenecks</td>
+            <td>Online presence, fan-out spikes, delivery retries.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Reliable, real-time messaging across regions.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Use queues for delivery and store for offline access.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Delivery guarantees vs. latency.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Duplicate messages, delayed receipts, or backlog.
+        </div>
+      </div>
+
+      <h3>Design YouTube</h3>
+      <p>
+        Highlight upload workflows, encoding pipelines, and global playback latency. Tie to long-running jobs.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  Uploader --> API[Upload API]
+  API --> Storage[(Raw Storage)]
+  Storage --> Transcode[Transcode Pipeline]
+  Transcode --> CDN[CDN + Edge Cache]
+  CDN --> Viewer[Viewer]
+      </pre>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Step</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Requirements</td>
+            <td>Reliable uploads, fast playback, global distribution.</td>
+          </tr>
+          <tr>
+            <td>API design</td>
+            <td>Upload, get video metadata, stream video.</td>
+          </tr>
+          <tr>
+            <td>Data model</td>
+            <td>Video metadata, encoding jobs, analytics.</td>
+          </tr>
+          <tr>
+            <td>Scaling strategy</td>
+            <td>Async transcoding, CDN caching, multi-bitrate streams.</td>
+          </tr>
+          <tr>
+            <td>Bottlenecks</td>
+            <td>Transcode queue, storage cost, CDN cache misses.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Massive media processing with strict user latency.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Separate upload, encode, and delivery with async jobs.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Storage cost vs. playback quality.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Failed transcodes or stale CDN content.
+        </div>
+      </div>
+
+      <h3>Design a rate limiter</h3>
+      <p>
+        Rate limiters protect systems from abuse and overload. Focus on algorithm choice and deployment location.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  Client --> Edge[Edge Proxy]
+  Edge --> Store[(Rate Limit Store)]
+  Edge --> Service[Backend Service]
+  Store --> Edge
+      </pre>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Step</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Requirements</td>
+            <td>Per-user limits, low latency, multi-region support.</td>
+          </tr>
+          <tr>
+            <td>API design</td>
+            <td>Token checks, admin overrides, metrics endpoints.</td>
+          </tr>
+          <tr>
+            <td>Data model</td>
+            <td>Token bucket counters, sliding windows.</td>
+          </tr>
+          <tr>
+            <td>Scaling strategy</td>
+            <td>Sharded counters, local caches, async metrics.</td>
+          </tr>
+          <tr>
+            <td>Bottlenecks</td>
+            <td>Global counters, latency to shared storage.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Prevent overload while keeping latency low.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Enforce limits at the edge with local counters.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Accuracy vs. speed, global fairness vs. local limits.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Inconsistent limits or edge bottlenecks.
+        </div>
+      </div>
+
+      <h3>Design a URL shortener</h3>
+      <p>
+        URL shorteners test data modeling, key generation, and read-heavy traffic. The design is simple but highlights
+        trade-offs in scale.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  Client --> API[Shorten API]
+  API --> KeyGen[Key Generator]
+  KeyGen --> Store[(URL Store)]
+  Client --> Redirect[Redirect Service]
+  Redirect --> Store
+      </pre>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Step</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Requirements</td>
+            <td>Short links, high read QPS, durability.</td>
+          </tr>
+          <tr>
+            <td>API design</td>
+            <td>Create short link, redirect, analytics.</td>
+          </tr>
+          <tr>
+            <td>Data model</td>
+            <td>Short key, original URL, metadata.</td>
+          </tr>
+          <tr>
+            <td>Scaling strategy</td>
+            <td>Cache hot links, shard by key prefix.</td>
+          </tr>
+          <tr>
+            <td>Bottlenecks</td>
+            <td>Key generation, cache hot spots, write amplification.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          High read traffic on a simple lookup.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Generate unique keys and serve reads from cache.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Short key space vs. collision risk.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Key collisions or cache stampedes.
+        </div>
+      </div>
+
+      <h3>1-page cheat sheet</h3>
+      <div class="grid-blocks">
+        <div class="micro-card">
+          <p><strong>Clarify</strong>: goals, constraints, traffic, latency, storage.</p>
+          <p><strong>Design</strong>: APIs, data model, request flow.</p>
+          <p><strong>Scale</strong>: caching, sharding, replication.</p>
+          <p><strong>Reliability</strong>: failover, retries, backpressure.</p>
+          <p><strong>Trade-offs</strong>: alternatives, costs, risks.</p>
+        </div>
+        <div class="micro-card">
+          <p><strong>Always ask</strong>: target latency, availability, global vs. regional.</p>
+          <p><strong>Always show</strong>: bottlenecks and how you address them.</p>
+          <p><strong>Always summarize</strong>: restate requirements and why this design fits.</p>
+        </div>
+      </div>
+
+      <h3>15-minute revision flow</h3>
+      <pre class="mermaid">
+flowchart LR
+  Minute1[Minute 1-3: Clarify] --> Minute2[Minute 4-6: APIs + Data]
+  Minute2 --> Minute3[Minute 7-10: Architecture]
+  Minute3 --> Minute4[Minute 11-13: Scale + Failure Modes]
+  Minute4 --> Minute5[Minute 14-15: Trade-offs + Summary]
+      </pre>
+
+      <h3>System design checklist</h3>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Section</th>
+            <th>Checklist items</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Requirements</td>
+            <td>Functional goals, non-functional constraints, traffic assumptions.</td>
+          </tr>
+          <tr>
+            <td>APIs</td>
+            <td>Core endpoints, idempotency, rate limits.</td>
+          </tr>
+          <tr>
+            <td>Data</td>
+            <td>Entities, access patterns, indexes, sharding key.</td>
+          </tr>
+          <tr>
+            <td>Architecture</td>
+            <td>Request flow, async paths, dependencies.</td>
+          </tr>
+          <tr>
+            <td>Scale</td>
+            <td>Cache, replication, partitioning, queues.</td>
+          </tr>
+          <tr>
+            <td>Reliability</td>
+            <td>Failover, retries, backpressure, observability.</td>
+          </tr>
+          <tr>
+            <td>Trade-offs</td>
+            <td>Alternatives, cost, risk, future evolution.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <div>Built for senior engineers and system designers.</div>
+    <div>Distributed Systems Visual Guide.</div>
+  </footer>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      var stepper = document.querySelector("[data-stepper]");
+      if (!stepper) {
+        return;
+      }
+      var buttons = stepper.querySelectorAll(".step-button");
+      var panels = stepper.querySelectorAll(".stepper-panel");
+
+      function activate(step) {
+        buttons.forEach(function (button) {
+          var isActive = button.getAttribute("data-step") === step;
+          button.classList.toggle("is-active", isActive);
+          button.setAttribute("aria-pressed", isActive ? "true" : "false");
+        });
+        panels.forEach(function (panel) {
+          var isActive = panel.getAttribute("data-step-panel") === step;
+          panel.classList.toggle("is-active", isActive);
+          panel.hidden = !isActive;
+        });
+      }
+
+      buttons.forEach(function (button) {
+        button.addEventListener("click", function () {
+          activate(button.getAttribute("data-step"));
+        });
+      });
+    });
+  </script>
+</body>
+
+</html>

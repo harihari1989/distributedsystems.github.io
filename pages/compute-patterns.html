@@ -13,6 +13,84 @@
   <script defer src="../assets/js/playgrounds.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
   <script defer src="../assets/js/mermaid-init.js"></script>
+  <style>
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+      text-align: left;
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border-light);
+      vertical-align: top;
+    }
+
+    .comparison-table th {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      background: var(--bg-tertiary);
+    }
+
+    .comparison-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .callout {
+      padding: 1rem 1.2rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-light);
+      background: var(--bg-secondary);
+      box-shadow: var(--shadow-sm);
+      margin: 1.5rem 0;
+    }
+
+    .callout--tip {
+      border-left: 4px solid var(--status-good);
+    }
+
+    .callout--warn {
+      border-left: 4px solid var(--status-warn);
+    }
+
+    .callout--when {
+      border-left: 4px solid var(--accent-primary);
+    }
+
+    .lens {
+      display: grid;
+      gap: 0.75rem;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      margin: 1.25rem 0 2rem;
+    }
+
+    .lens-item {
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      padding: 0.9rem 1rem;
+      background: var(--bg-secondary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .lens-item strong {
+      display: block;
+      margin-bottom: 0.4rem;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text-tertiary);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+  </style>
 </head>
 
 <body>
@@ -25,6 +103,7 @@
       <a href="compute-patterns.html" class="is-active" aria-current="page">Compute</a>
       <a href="database-architectures.html">Storage</a>
       <a href="database-patterns.html">Databases</a>
+      <a href="distributed-transactions.html">Transactions</a>
       <a href="consistency-models.html">Consistency</a>
       <a href="networking-patterns.html">Networking</a>
       <a href="kubernetes-patterns.html">Kubernetes</a>
@@ -39,137 +118,591 @@
     <section>
       <h2>Problem framing</h2>
       <p>
-        Distributed systems must serve variable workloads while meeting latency and availability targets.
-        Compute patterns define how work is placed, how requests are routed, and how state is managed.
-        Without clear patterns, scaling decisions become ad hoc and failure handling becomes inconsistent.
+        Distributed systems must execute work under unpredictable traffic, tight latency budgets, and evolving data
+        models. Compute paradigms describe how work is placed, scaled, and coordinated across machines. The interviewer
+        expects you to choose a model based on product goals, failure modes, and trade-offs rather than naming
+        technologies.
       </p>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Workload shape changes faster than infrastructure can be rebuilt.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Pick a compute model, then fit storage, networking, and scaling to it.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Latency vs. flexibility, simplicity vs. scale, speed vs. consistency.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Bottlenecks, hot partitions, or state loss under failure.
+        </div>
+      </div>
     </section>
 
     <section>
       <h2>Core idea / pattern</h2>
-      <h3>Client-server vs peer-to-peer</h3>
       <p>
-        Client-server centralizes control and simplifies coordination, but concentrates load and failure domains.
-        Peer-to-peer distributes load and ownership, but requires more complex discovery and consistency management.
-        See <a href="networking-patterns.html">networking patterns</a> for discovery and routing trade-offs.
+        Modern systems blend client-server foundations with stateless services, stateful pipelines, and event-driven
+        workflows. Each pattern below includes real-world usage, trade-offs, and failure modes to guide interview
+        decisions.
       </p>
 
-      <h3>Stateless vs stateful services</h3>
+      <h3>Client-server model</h3>
       <p>
-        Stateless services keep request state out of the service process, enabling quick replacement and elastic
-        scaling.
-        Stateful services keep session or durable state locally, enabling low-latency access at the cost of more complex
-        failover.
-        State placement interacts with replication and consistency decisions in
-        <a href="database-architectures.html">storage and data patterns</a>.
+        A centralized server handles computation while clients focus on presentation and input. This is the default
+        model for web apps and SaaS dashboards, especially when requirements are clear and latency targets are modest.
       </p>
-
-      <table>
+      <pre class="mermaid">
+flowchart LR
+  Client --> LB[Load Balancer]
+  LB --> App[Application Server]
+  App --> DB[(Database)]
+      </pre>
+      <table class="comparison-table">
         <thead>
           <tr>
-            <th>Attribute</th>
-            <th>Stateless services</th>
-            <th>Stateful services</th>
+            <th>Strengths</th>
+            <th>Weaknesses</th>
+            <th>Real-world examples</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>Scale-out</td>
-            <td>Add or remove instances freely</td>
-            <td>Requires data movement or session affinity</td>
-          </tr>
-          <tr>
-            <td>Failure recovery</td>
-            <td>Replace instance with minimal impact</td>
-            <td>Recover or rebuild local state</td>
-          </tr>
-          <tr>
-            <td>Deployment</td>
-            <td>Easier rolling updates</td>
-            <td>Careful coordination and drain needed</td>
-          </tr>
-          <tr>
-            <td>Latency</td>
-            <td>Often higher due to remote state</td>
-            <td>Lower for local state access</td>
+            <td>Simple architecture, centralized control, easy security model.</td>
+            <td>Server bottlenecks, single-region latency, scaling pressure.</td>
+            <td>Admin dashboards, enterprise tools, monolithic web apps.</td>
           </tr>
         </tbody>
       </table>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Many clients need a shared source of truth and logic.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Route traffic to a central service tier with a consistent data store.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Simplicity vs. limited horizontal scale and higher latency at distance.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Overloaded app servers or a single-region outage.
+        </div>
+      </div>
 
-      <h3>Horizontal vs vertical scaling</h3>
+      <h3>Stateless compute (cloud-native services)</h3>
       <p>
-        Horizontal scaling adds more nodes to spread load, while vertical scaling increases resources per node.
-        Horizontal scaling improves fault tolerance, but adds coordination overhead and more failure modes.
-        Vertical scaling is simpler to operate, but hits hard limits and larger blast radius.
+        Stateless services treat each request as independent. All shared state lives in external systems such as
+        caches, queues, or databases. This is the core model for most cloud-native API stacks.
       </p>
-
-      <h3>MapReduce & Batch Processing</h3>
-      <p>
-        MapReduce is a programming model for processing large data sets with a distributed algorithm on a cluster.
-        Originally published by Google in <a href="https://research.google/pubs/pub62/" target="_blank">MapReduce:
-          Simplified Data Processing on Large Clusters (2004)</a>.
-      </p>
-      <ul>
-        <li><strong>Map:</strong> Filters and sorts data (e.g., sorting students by first name into queues).</li>
-        <li><strong>Shuffle:</strong> redistributes data based on keys.</li>
-        <li><strong>Reduce:</strong> Performs a summary operation (e.g., counting the number of students in each queue).
-        </li>
-      </ul>
       <pre class="mermaid">
 flowchart LR
-    Input[Input Data] --> Split1[Split]
-    Input --> Split2[Split]
-    Split1 --> Map1[Map Worker]
-    Split2 --> Map2[Map Worker]
-    Map1 --> Shuffle
-    Map2 --> Shuffle
-    Shuffle --> Reduce1[Reduce Worker]
-    Shuffle --> Reduce2[Reduce Worker]
-    Reduce1 --> Output1[Output Part]
-    Reduce2 --> Output2[Output Part]
-        </pre>
+  Client --> LB[Load Balancer]
+  LB --> S1[Stateless Service]
+  S1 --> Cache[(Cache)]
+  S1 --> DB[(Database)]
+      </pre>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Why it scales well</th>
+            <th>Trade-offs</th>
+            <th>Real systems</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Instances scale horizontally and recover quickly.</td>
+            <td>External state increases network I/O and cache complexity.</td>
+            <td>Netflix APIs, Stripe payments, serverless backends.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Spiky traffic needs fast scaling without session pinning.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Push state to Redis or databases and keep services disposable.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Elasticity vs. increased latency and cache consistency risk.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Cache stampedes or state store saturation.
+        </div>
+      </div>
 
-      <h3>Data Parallel vs Model Parallel</h3>
+      <h3>Stateful compute systems</h3>
       <p>
-        In modern distributed ML training, we distinguish between splitting the data and splitting the model.
+        Stateful compute co-locates data and processing to minimize hops. It is critical for databases, streaming
+        engines, and low-latency systems where the data is hot and frequently accessed. See
+        <a href="database-architectures.html">storage and data patterns</a> for replication and sharding details.
       </p>
+      <pre class="mermaid">
+flowchart LR
+  Client --> Node[Stateful Node]
+  Node --> Disk[(Local Data)]
+      </pre>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Strengths</th>
+            <th>Challenges</th>
+            <th>Examples</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Low-latency access, efficient for hot data.</td>
+            <td>Complex failover, replication lag, careful sharding.</td>
+            <td>Kafka brokers, Redis, stateful ML inference.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Hot data needs fast access with minimal network hops.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Keep compute and state together, replicate for durability.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Speed vs. operational complexity and failover risk.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Data loss, replication lag, or hot shard overload.
+        </div>
+      </div>
+
+      <h3>Scaling modes (horizontal vs vertical)</h3>
+      <p>
+        Horizontal scaling adds nodes; vertical scaling adds resources per node. Most modern systems scale horizontally
+        because it improves resiliency and fits stateless patterns.
+      </p>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Mode</th>
+            <th>Strengths</th>
+            <th>Risks</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Horizontal</td>
+            <td>Fault tolerant, elastic growth.</td>
+            <td>Coordination overhead, more moving parts.</td>
+          </tr>
+          <tr>
+            <td>Vertical</td>
+            <td>Simpler ops, fewer dependencies.</td>
+            <td>Hard limits, larger blast radius.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Growth pushes single nodes beyond their limits.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Scale out first, then up for specialized bottlenecks.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Simplicity vs. resilience and operational flexibility.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Oversized nodes or unstable coordination layers.
+        </div>
+      </div>
+
+      <h3>MapReduce and batch processing</h3>
+      <p>
+        Batch processing executes large jobs across clusters with fault-tolerant recomputation. MapReduce is the
+        canonical model. See <a href="https://research.google/pubs/pub62/" target="_blank">MapReduce (2004)</a> for the
+        original paper.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  Input[Input Data] --> Map[Map Workers]
+  Map --> Shuffle[Shuffle]
+  Shuffle --> Reduce[Reduce Workers]
+  Reduce --> Output[Output Data]
+      </pre>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Strengths</th>
+            <th>Weaknesses</th>
+            <th>Real systems</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Massive parallelism, fault recovery via retries.</td>
+            <td>High latency, inefficient for low-latency needs.</td>
+            <td>Hadoop, Spark, Google MapReduce.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Large datasets need offline or periodic computation.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Split data, process in parallel, aggregate results.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Throughput vs. long end-to-end latency.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Shuffle skew, slow reducers, or job retries cascading.
+        </div>
+      </div>
+
+      <h3>Stream processing (near real-time)</h3>
+      <p>
+        Stream processing runs continuous computation on unbounded data. It is the backbone for monitoring, fraud
+        detection, and live analytics.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  Producers --> Kafka[(Event Bus)]
+  Kafka --> Stream[Stream Processor]
+  Stream --> Sink[(Analytics or Store)]
+      </pre>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Key features</th>
+            <th>Use cases</th>
+            <th>Risks</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Windowing, stateful operators, exactly-once semantics.</td>
+            <td>Fraud detection, metrics aggregation, monitoring.</td>
+            <td>Lag buildup, out-of-order events.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Insights must arrive seconds after events, not hours.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Process streams continuously with stateful operators.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Timeliness vs. operational complexity and state size.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Backpressure, lag spikes, or inconsistent window state.
+        </div>
+      </div>
+
+      <h3>Data parallelism vs model parallelism</h3>
+      <p>
+        Distributed ML workloads either split the data across identical models (data parallelism) or split the model
+        itself across nodes (model parallelism). This is common in training and large-scale inference.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  subgraph DataParallel[Data Parallelism]
+    Data[Data Split] --> ModelA[Model Replica A]
+    Data --> ModelB[Model Replica B]
+    ModelA --> Grad[Gradient Aggregation]
+    ModelB --> Grad
+  end
+  subgraph ModelParallel[Model Parallelism]
+    Input[Input] --> Layer1[Layer 1 on Node A]
+    Layer1 --> Layer2[Layer 2 on Node B]
+    Layer2 --> Output[Output]
+  end
+      </pre>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Approach</th>
+            <th>Strengths</th>
+            <th>Constraints</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Data parallelism</td>
+            <td>Scales throughput, simpler coordination.</td>
+            <td>Needs fast gradient aggregation.</td>
+          </tr>
+          <tr>
+            <td>Model parallelism</td>
+            <td>Supports very large models.</td>
+            <td>Pipeline complexity and higher latency.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          ML workloads exceed single-node compute or memory.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Split data or model to distribute training and inference.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Throughput vs. synchronization overhead.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Straggler nodes or gradient bottlenecks.
+        </div>
+      </div>
+
+      <h3>Event-driven and reactive systems</h3>
+      <p>
+        Event-driven systems react to events instead of polling. This supports loose coupling and scalable workflows.
+        See <a href="networking-patterns.html">networking patterns</a> for event transport considerations.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  User[User Action] --> Event[Event]
+  Event --> Bus[(Event Bus)]
+  Bus --> Fn[Trigger Function]
+  Fn --> SideEffects[Side Effects]
+      </pre>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Benefits</th>
+            <th>Trade-offs</th>
+            <th>Common tools</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Loose coupling, async processing, scalable fan-out.</td>
+            <td>Eventual consistency, observability complexity.</td>
+            <td>Kafka, RabbitMQ, EventBridge.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Systems need to respond to many asynchronous triggers.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Emit events and let independent consumers react.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Flexibility vs. tracing and ordering complexity.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Lost events or duplicated processing.
+        </div>
+      </div>
+
+      <h3>Peer-to-peer compute</h3>
+      <p>
+        Peer-to-peer networks treat each node as both client and server. They remove central bottlenecks but introduce
+        trust and consistency challenges.
+      </p>
+      <pre class="mermaid">
+flowchart LR
+  PeerA[Peer A] <--> PeerB[Peer B]
+  PeerB <--> PeerC[Peer C]
+  PeerC <--> PeerA
+      </pre>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Strengths</th>
+            <th>Trade-offs</th>
+            <th>Examples</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>No central bottleneck, resilient mesh.</td>
+            <td>Complex consistency and trust management.</td>
+            <td>BitTorrent, blockchain, WebRTC meshes.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Need decentralized coordination with no central owner.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Nodes share workloads and data directly.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Resilience vs. governance and trust complexity.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Sybil attacks, inconsistent state, or partitioned peers.
+        </div>
+      </div>
+
+      <h3>Hybrid and multi-tier architectures</h3>
+      <p>
+        Real systems blend patterns: stateless API gateways, stateful media relays, and event-driven analytics. The
+        architecture below mirrors how modern SaaS systems combine compute tiers.
+      </p>
+      <pre class="mermaid">
+flowchart TB
+  Client[Client] --> Gateway[API Gateway]
+  Gateway --> Services[Stateless Services]
+  Services --> Cache[(Cache)]
+  Services --> DB[(Stateful Store)]
+  Services --> Stream[Stream Processor]
+  Stream --> Analytics[(Analytics Store)]
+  Services --> Batch[Batch Jobs]
+      </pre>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Tier</th>
+            <th>Role</th>
+            <th>Example</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Stateless edge</td>
+            <td>Auth, routing, request shaping.</td>
+            <td>API gateway for Microsoft Teams.</td>
+          </tr>
+          <tr>
+            <td>Stateful core</td>
+            <td>Low-latency data access.</td>
+            <td>Media relays or session stores.</td>
+          </tr>
+          <tr>
+            <td>Async analytics</td>
+            <td>Batch and streaming insights.</td>
+            <td>Telemetry pipelines and dashboards.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="lens">
+        <div class="lens-item">
+          <strong>Problem</strong>
+          Single patterns rarely cover every workload shape.
+        </div>
+        <div class="lens-item">
+          <strong>Pattern</strong>
+          Combine tiers to isolate latency-sensitive and async work.
+        </div>
+        <div class="lens-item">
+          <strong>Trade-offs</strong>
+          Flexibility vs. integration complexity and cost.
+        </div>
+        <div class="lens-item">
+          <strong>Failure modes</strong>
+          Coupled tiers causing cascading failures.
+        </div>
+      </div>
+
+      <h3>How to choose the right compute model</h3>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Requirement</th>
+            <th>Best pattern</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Low latency</td>
+            <td>Stateful or edge compute</td>
+          </tr>
+          <tr>
+            <td>High scale</td>
+            <td>Stateless + autoscaling</td>
+          </tr>
+          <tr>
+            <td>Fault tolerance</td>
+            <td>Replication + event-driven pipelines</td>
+          </tr>
+          <tr>
+            <td>ML training</td>
+            <td>Data or model parallelism</td>
+          </tr>
+          <tr>
+            <td>Real-time analytics</td>
+            <td>Streaming</td>
+          </tr>
+          <tr>
+            <td>Simplicity</td>
+            <td>Client-server</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout callout--tip">
+        <p><strong>Mental model:</strong> Compute patterns are trade-offs between latency, consistency, scalability, and
+          complexity. Optimize for context, not for maximal architecture.</p>
+      </div>
+
+      <h3>Standard resources</h3>
       <ul>
-        <li><strong>Data Parallelism:</strong> The model is replicated across all nodes. Each node processes a different
-          subset of the data. Gradients are aggregated (all-reduce).</li>
-        <li><strong>Model Parallelism:</strong> The model is too large for one node's memory. Layers or components of
-          the model are split across different nodes. Data flows through nodes sequentially or in a pipeline.</li>
+        <li><a href="https://research.google/pubs/pub62/" target="_blank">MapReduce: Simplified Data Processing on Large
+            Clusters</a> - Dean &amp; Ghemawat (2004)</li>
+        <li><a href="https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf" target="_blank">Dynamo:
+            Amazon's Highly Available Key-value Store</a> - DeCandia et al. (2007)</li>
       </ul>
-
-      <h3>Load balancing strategies</h3>
-      <p>
-        Load balancing spreads requests across replicas using round-robin, least-connections, or latency-aware routing.
-        L7 balancing enables routing by request attributes, but adds CPU cost and state in the proxy layer.
-        For gateway and proxy details, see <a href="networking-patterns.html">networking patterns</a>.
-      </p>
-
-      <section>
-        <h4>Standard Resources</h4>
-        <ul>
-          <li><a href="https://research.google/pubs/pub62/" target="_blank">MapReduce: Simplified Data Processing on
-              Large Clusters</a> - Dean & Ghemawat (2004)</li>
-          <li><a href="https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf" target="_blank">Dynamo:
-              Amazon’s Highly Available Key-value Store</a> - DeCandia et al. (2007)</li>
-        </ul>
-      </section>
     </section>
 
     <section>
       <h2>Architecture diagram</h2>
       <pre class="mermaid">
 flowchart LR
-  Clients[Clients] --> DNS[DNS or Anycast]
-  DNS --> LB[Load Balancer]
-  LB --> S1[Stateless Service A]
-  LB --> S2[Stateless Service B]
-  S1 --> Cache[Distributed Cache]
-  S2 --> Cache
-  Cache --> DB[(Stateful Store)]
-        </pre>
+  Clients[Clients] --> Edge[Edge Gateway]
+  Edge --> LB[Load Balancer]
+  LB --> Stateless[Stateless Services]
+  Stateless --> Cache[Distributed Cache]
+  Stateless --> DB[(Stateful Store)]
+  Stateless --> Stream[Stream Processor]
+  Stream --> Analytics[(Analytics)]
+  Stateless --> Batch[Batch Jobs]
+      </pre>
     </section>
 
     <section>
@@ -223,6 +756,9 @@ flowchart LR
         <li>The service computes the response and writes state updates if needed.</li>
         <li>The response returns through the load balancer to the client.</li>
       </ol>
+      <div class="callout callout--warn">
+        <p><strong>Warning:</strong> If state is implicit in the service, horizontal scaling breaks under load.</p>
+      </div>
     </section>
 
     <section>
@@ -233,30 +769,34 @@ flowchart LR
     <section>
       <h2>Failure modes</h2>
       <ul>
-        <li>Load balancer misconfiguration or failure causes partial or total outage.</li>
-        <li>Hot keys or skewed traffic create uneven load across replicas.</li>
-        <li>Stateful instances fail before persisting state, causing data loss or session drops.</li>
-        <li>Cache stampedes amplify load on storage during misses or invalidations.</li>
-        <li>Horizontal scaling without shard rebalancing creates hot partitions.</li>
+        <li>Stateless services overwhelm shared caches or databases during traffic spikes.</li>
+        <li>Stateful nodes fail before replication, causing session loss or data gaps.</li>
+        <li>Batch pipelines stall on shuffle skew or slow reducers.</li>
+        <li>Stream processors fall behind when backpressure is ignored.</li>
+        <li>Event-driven systems duplicate work due to missing idempotency.</li>
+        <li>Peer-to-peer systems split during partitions or trust failures.</li>
       </ul>
     </section>
 
     <section>
       <h2>Trade-offs</h2>
       <ul>
-        <li>Statelessness favors elasticity and fast recovery, but increases dependency on storage and cache tiers.</li>
-        <li>Stateful services reduce per-request latency, but complicate failover and rollout processes.</li>
-        <li>Horizontal scaling improves resilience, but adds coordination overhead and tail-latency risk.</li>
-        <li>L7 routing enables smart traffic shaping, but adds a critical proxy layer and operational complexity.</li>
+        <li>Statelessness favors elasticity but increases dependency on storage and cache tiers.</li>
+        <li>Stateful compute reduces latency but complicates failover and scaling.</li>
+        <li>Batch processing maximizes throughput but sacrifices real-time responsiveness.</li>
+        <li>Streaming delivers low latency insights but requires complex state handling.</li>
+        <li>Event-driven workflows improve decoupling but need strong observability.</li>
       </ul>
     </section>
 
     <section>
       <h2>Real-world usage</h2>
       <ul>
-        <li>Web frontends and API layers are typically stateless behind L7 load balancers like Envoy or NGINX.</li>
-        <li>Stateful services include databases, queues, and session stores that require replication and sharding.</li>
-        <li>Peer-to-peer patterns appear in BitTorrent-style distribution and WebRTC meshes.</li>
+        <li>Stateless APIs sit behind L7 gateways such as Envoy or NGINX.</li>
+        <li>Stateful services include databases, Kafka, and ML inference nodes.</li>
+        <li>Batch pipelines feed analytics warehouses and offline reporting.</li>
+        <li>Stream processing powers fraud detection and monitoring pipelines.</li>
+        <li>Event-driven systems drive notifications, automation, and telemetry.</li>
         <li>Autoscaling patterns are often implemented with Kubernetes HPA in <a
             href="kubernetes-patterns.html">Kubernetes patterns</a>.</li>
       </ul>

@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en" data-color-mode="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Distributed Transactions | Distributed Systems Visual Guide</title>
+    <link rel="stylesheet" href="../assets/css/theme.css" />
+    <script defer src="../assets/js/toggleTheme.js"></script>
+    <script defer src="../assets/js/site.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script defer src="../assets/js/mermaid-init.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-brand">
+        <a href="../index.html">Distributed Systems Visual Guide</a>
+      </div>
+      <nav class="site-nav">
+        <a href="../index.html">Home</a>
+        <a href="compute-patterns.html">Compute</a>
+        <a href="database-architectures.html">Storage</a>
+        <a href="database-patterns.html">Databases</a>
+        <a href="distributed-transactions.html" class="is-active" aria-current="page">Transactions</a>
+        <a href="consistency-models.html">Consistency</a>
+        <a href="networking-patterns.html">Networking</a>
+        <a href="kubernetes-patterns.html">Kubernetes</a>
+        <a href="operating-systems.html">Operating Systems</a>
+        <a href="solid-design-principles.html">SOLID Design</a>
+      </nav>
+      <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
+    </header>
+    <main>
+      <h1>Distributed Transactions</h1>
+
+      <section>
+        <h2>Problem framing</h2>
+        <p>
+          Once data is sharded or split across services, a single-node transaction cannot enforce invariants end to end.
+          Distributed transactions coordinate multiple participants so updates are atomic and isolated, but every extra
+          round trip adds latency and reduces availability under failure. This page focuses on coordination protocols,
+          while storage layout lives in <a href="database-architectures.html">storage patterns</a> and engine internals
+          live in <a href="database-patterns.html">database systems internals</a>.
+        </p>
+      </section>
+
+      <section>
+        <h2>Core idea / pattern</h2>
+        <h3>Two-phase commit (2PC)</h3>
+        <p>
+          Problem: commit a transaction across multiple shards without partial writes.
+          Pattern: a coordinator asks participants to prepare (durable intent + locks), then issues a global commit only
+          if all vote yes.
+        </p>
+
+        <h3>Three-phase commit (3PC)</h3>
+        <p>
+          Problem: avoid blocking when the coordinator fails after a prepare.
+          Pattern: add a pre-commit phase that lets participants decide commit without the coordinator, assuming bounded
+          network delays.
+        </p>
+
+        <h3>Consensus-backed transactions</h3>
+        <p>
+          Problem: keep decisions durable even if leaders fail or replicas restart.
+          Pattern: each shard is a consensus group (Raft or Paxos), and transaction intents plus commit decisions are
+          replicated before being applied, often with 2PC at the coordinator.
+        </p>
+
+        <h3>Saga workflows</h3>
+        <p>
+          Problem: complete long-running, multi-service workflows without locking resources.
+          Pattern: sequence local transactions and rely on compensating actions for rollback, trading strict atomicity
+          for availability.
+        </p>
+
+        <h3>Deterministic ordering (Calvin-style)</h3>
+        <p>
+          Problem: avoid distributed deadlocks and reduce coordination on commit.
+          Pattern: a sequencer orders transactions ahead of execution, then participants apply updates in that order
+          without waiting on two-phase prepare rounds.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Approach</th>
+              <th>Guarantee focus</th>
+              <th>Latency impact</th>
+              <th>Failure behavior</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>2PC</td>
+              <td>Atomic commit</td>
+              <td>Two coordinator rounds</td>
+              <td>Blocking on coordinator loss</td>
+            </tr>
+            <tr>
+              <td>3PC</td>
+              <td>Atomic commit</td>
+              <td>Three coordinator rounds</td>
+              <td>Assumes bounded delays</td>
+            </tr>
+            <tr>
+              <td>Consensus + 2PC</td>
+              <td>Atomic commit + durability</td>
+              <td>Extra quorum writes</td>
+              <td>Survives replica loss</td>
+            </tr>
+            <tr>
+              <td>Sagas</td>
+              <td>Eventual consistency</td>
+              <td>Variable, async steps</td>
+              <td>Compensation can fail</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>When to use sagas vs 2PC</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Choice</th>
+              <th>Best fit</th>
+              <th>Why it works</th>
+              <th>Watch outs</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>2PC</td>
+              <td>Short, transactional updates across a few shards</td>
+              <td>Atomic commit with strong invariants</td>
+              <td>Coordinator loss blocks progress</td>
+            </tr>
+            <tr>
+              <td>Sagas</td>
+              <td>Long-running workflows across services</td>
+              <td>No global locks, higher availability</td>
+              <td>Compensation may be incomplete</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Architecture diagram</h2>
+        <h3>Coordinator and participants</h3>
+        <pre class="mermaid">
+flowchart LR
+  Client[Client] --> Coord[Txn Coordinator]
+  Coord --> A[Shard A: Txn + Lock Manager]
+  Coord --> B[Shard B: Txn + Lock Manager]
+  Coord --> C[Shard C: Txn + Lock Manager]
+  A --> LogA[Replicated Log A]
+  B --> LogB[Replicated Log B]
+  C --> LogC[Replicated Log C]
+  Coord --> TxnLog[Coordinator Log]
+        </pre>
+      </section>
+
+      <section>
+        <h2>Step-by-step flow</h2>
+        <ol>
+          <li>The client submits a multi-shard transaction to the coordinator.</li>
+          <li>The coordinator identifies participant shards from the routing map.</li>
+          <li>Each participant writes a durable prepare record and locks or versions the affected keys.</li>
+          <li>If all participants vote yes, the coordinator persists the commit decision.</li>
+          <li>Participants apply changes, release locks, and acknowledge completion.</li>
+          <li>Any no vote or timeout triggers a global abort and rollback.</li>
+        </ol>
+
+        <h3>2PC commit dataflow</h3>
+        <pre class="mermaid">
+sequenceDiagram
+  participant Client
+  participant Coord as Coordinator
+  participant A as Shard A
+  participant B as Shard B
+  participant LogA as Log A
+  participant LogB as Log B
+  participant TLog as Txn Log
+
+  Client->>Coord: Begin transaction
+  Coord->>A: Prepare
+  A->>LogA: Write prepare record
+  LogA-->>A: Fsync ack
+  A-->>Coord: Vote yes
+  Coord->>B: Prepare
+  B->>LogB: Write prepare record
+  LogB-->>B: Fsync ack
+  B-->>Coord: Vote yes
+  Coord->>TLog: Write commit decision
+  TLog-->>Coord: Commit durable
+  Coord->>A: Commit
+  Coord->>B: Commit
+  A-->>Coord: Ack
+  B-->>Coord: Ack
+  Coord-->>Client: Commit ack
+        </pre>
+
+        <h3>Consensus-backed commit dataflow</h3>
+        <pre class="mermaid">
+sequenceDiagram
+  participant Client
+  participant Coord as Coordinator
+  participant RaftA as Shard A Raft
+  participant RaftB as Shard B Raft
+  participant Txn as Txn Log Raft
+
+  Client->>Coord: Begin transaction
+  Coord->>RaftA: Replicate intent
+  RaftA-->>Coord: Quorum ack
+  Coord->>RaftB: Replicate intent
+  RaftB-->>Coord: Quorum ack
+  Coord->>Txn: Replicate commit decision
+  Txn-->>Coord: Quorum ack
+  Coord->>RaftA: Apply commit
+  Coord->>RaftB: Apply commit
+  Coord-->>Client: Commit ack
+        </pre>
+
+        <h3>Saga compensation dataflow</h3>
+        <pre class="mermaid">
+sequenceDiagram
+  participant Client
+  participant Saga as Saga Orchestrator
+  participant A as Service A
+  participant B as Service B
+  participant C as Service C
+
+  Client->>Saga: Start workflow
+  Saga->>A: Execute step A
+  A-->>Saga: Step A ok
+  Saga->>B: Execute step B
+  B-->>Saga: Step B ok
+  Saga->>C: Execute step C
+  C-->>Saga: Step C failed
+  Saga->>B: Compensate step B
+  B-->>Saga: Compensation ok
+  Saga->>A: Compensate step A
+  A-->>Saga: Compensation ok
+  Saga-->>Client: Workflow failed
+        </pre>
+
+        <h3>Deterministic ordering dataflow</h3>
+        <pre class="mermaid">
+sequenceDiagram
+  participant Client
+  participant Seq as Sequencer
+  participant A as Shard A
+  participant B as Shard B
+  participant LogA as Log A
+  participant LogB as Log B
+
+  Client->>Seq: Submit transaction
+  Seq->>Seq: Assign global order
+  Seq->>A: Order entry
+  Seq->>B: Order entry
+  A->>LogA: Append ordered txn
+  B->>LogB: Append ordered txn
+  LogA-->>A: Ack
+  LogB-->>B: Ack
+  A->>A: Execute in order
+  B->>B: Execute in order
+  A-->>Seq: Ack commit
+  B-->>Seq: Ack commit
+  Seq-->>Client: Commit result
+        </pre>
+
+        <h3>Coordinator crash recovery timeline</h3>
+        <pre class="mermaid">
+sequenceDiagram
+  participant Coord as Coordinator
+  participant A as Shard A
+  participant B as Shard B
+  participant Log as Txn Log
+
+  Coord->>A: Prepare
+  Coord->>B: Prepare
+  A-->>Coord: Vote yes
+  B-->>Coord: Vote yes
+  Coord--x Coord: Crash before commit
+  A->>Log: Query decision
+  B->>Log: Query decision
+  Log-->>A: No decision found
+  Log-->>B: No decision found
+  A-->>B: Timeout triggers abort
+  B-->>A: Rollback prepared state
+        </pre>
+      </section>
+
+      <section>
+        <h2>Failure modes</h2>
+        <ul>
+          <li>Coordinator loss after prepare blocks participants until recovery or manual resolution.</li>
+          <li>Slow or failed participants hold locks and drive tail latency.</li>
+          <li>Replica quorum loss stalls commits even if the coordinator is healthy.</li>
+          <li>Clock skew or network partitions invalidate 3PC timing assumptions.</li>
+          <li>Compensating actions in sagas can fail, leaving partial outcomes.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Trade-offs</h2>
+        <ul>
+          <li>Atomicity requires extra log writes and coordination round trips.</li>
+          <li>Higher isolation improves correctness but extends lock or version lifetimes.</li>
+          <li>Consensus-backed commits reduce data loss but add quorum latency.</li>
+          <li>Sagas improve availability but move consistency management into application logic.</li>
+          <li>Cross-region coordination increases tail latency unless locality is enforced.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Real-world usage</h2>
+        <ul>
+          <li>Spanner and CockroachDB use 2PC across consensus-backed shards for strong consistency.</li>
+          <li>MySQL XA and Postgres logical transaction managers support 2PC in single clusters.</li>
+          <li>YugabyteDB and TiDB coordinate distributed transactions over Raft or Paxos groups.</li>
+          <li>Microservice workflows often use sagas with an outbox or event log.</li>
+          <li>For distributed consistency guarantees, see <a href="consistency-models.html">consistency models</a>.</li>
+        </ul>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div>Built for senior engineers and system designers.</div>
+      <div>Distributed Systems Visual Guide.</div>
+    </footer>
+  </body>
+</html>
