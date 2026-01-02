@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Networking Patterns | Distributed Systems Visual Guide</title>
+    <title>Networking Essentials | Distributed Systems Visual Guide</title>
     <link rel="stylesheet" href="../assets/css/theme.css" />
     <script defer src="../assets/js/toggleTheme.js"></script>
     <script defer src="../assets/js/site.js"></script>
@@ -12,6 +12,84 @@
     <script defer src="../assets/js/playgrounds.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
     <script defer src="../assets/js/mermaid-init.js"></script>
+    <style>
+      .comparison-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-sm);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+      }
+
+      .comparison-table th,
+      .comparison-table td {
+        text-align: left;
+        padding: 0.85rem 1rem;
+        border-bottom: 1px solid var(--border-light);
+        vertical-align: top;
+      }
+
+      .comparison-table th {
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-tertiary);
+        background: var(--bg-tertiary);
+      }
+
+      .comparison-table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .callout {
+        padding: 1rem 1.2rem;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-light);
+        background: var(--bg-secondary);
+        box-shadow: var(--shadow-sm);
+        margin: 1.5rem 0;
+      }
+
+      .callout--tip {
+        border-left: 4px solid var(--status-good);
+      }
+
+      .callout--warn {
+        border-left: 4px solid var(--status-warn);
+      }
+
+      .callout--when {
+        border-left: 4px solid var(--accent-primary);
+      }
+
+      .lens {
+        display: grid;
+        gap: 0.75rem;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        margin: 1.25rem 0 2rem;
+      }
+
+      .lens-item {
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-sm);
+        padding: 0.9rem 1rem;
+        background: var(--bg-secondary);
+        box-shadow: var(--shadow-sm);
+      }
+
+      .lens-item strong {
+        display: block;
+        margin-bottom: 0.4rem;
+        font-family: var(--font-mono);
+        font-size: 0.85rem;
+        color: var(--text-tertiary);
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+    </style>
   </head>
   <body>
     <header class="site-header">
@@ -23,6 +101,7 @@
         <a href="compute-patterns.html">Compute</a>
         <a href="database-architectures.html">Storage</a>
         <a href="database-patterns.html">Databases</a>
+        <a href="distributed-transactions.html">Transactions</a>
         <a href="consistency-models.html">Consistency</a>
         <a href="networking-patterns.html" class="is-active" aria-current="page">Networking</a>
         <a href="kubernetes-patterns.html">Kubernetes</a>
@@ -32,207 +111,776 @@
       <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
     </header>
     <main>
-      <h1>Networking Patterns</h1>
+      <h1>System Design: Networking Essentials</h1>
 
       <section>
         <h2>Problem framing</h2>
         <p>
-          Distributed systems move across dynamic networks where service instances appear, disappear, and relocate.
-          Clients and services need stable discovery, safe routing, and policy enforcement without assuming static IPs.
-          Networking patterns provide repeatable ways to route traffic, manage protocol choices, and prevent cascading failures.
+          Networking is the connective tissue of every distributed system. Product features, reliability guarantees,
+          and latency budgets all rise or fall on how well components communicate. The goal in interviews is not to
+          memorize protocols, but to explain the intent, trade-offs, and failure modes behind the networking choices you
+          make.
         </p>
+        <div class="callout callout--tip">
+          <p><strong>Tip:</strong> Tie every protocol, load balancer, or retry policy back to a requirement and a failure mode.</p>
+        </div>
+        <div class="lens">
+          <div class="lens-item">
+            <strong>Problem</strong>
+            Systems fail when communication breaks or becomes unpredictable.
+          </div>
+          <div class="lens-item">
+            <strong>Pattern</strong>
+            Layered abstractions + clear request flow + defensive reliability primitives.
+          </div>
+          <div class="lens-item">
+            <strong>Trade-offs</strong>
+            Latency vs. reliability, simplicity vs. control, speed vs. safety.
+          </div>
+          <div class="lens-item">
+            <strong>Failure modes</strong>
+            Timeouts, retries, partitions, and cascading overload.
+          </div>
+        </div>
       </section>
 
       <section>
         <h2>Core idea / pattern</h2>
-        <h3>Service discovery</h3>
-        <p>
-          Service discovery provides a stable name that resolves to healthy instances as the fleet changes.
-          Patterns include DNS-based discovery, client-side discovery with a registry, and server-side discovery via a load balancer.
-          Discovery choices interact with scaling behavior discussed in <a href="compute-patterns.html">compute patterns</a>.
-        </p>
 
-        <table>
+        <h3>Networking layers: conceptual map</h3>
+        <p>
+          Layering lets engineers reason at the right level: application contracts, transport guarantees, and network
+          routing. When you explain this stack, you show you understand where problems originate.
+        </p>
+        <pre class="mermaid">
+flowchart TB
+  App[Application Layer] --> Transport[Transport Layer]
+  Transport --> Network[Network Layer]
+  Network --> Physical[Physical / Data Link]
+        </pre>
+        <table class="comparison-table">
           <thead>
             <tr>
-              <th>Pattern</th>
-              <th>How it works</th>
+              <th>Layer</th>
+              <th>Purpose</th>
+              <th>Examples</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Application</td>
+              <td>Define request/response and streaming semantics</td>
+              <td>HTTP, WebSockets, gRPC</td>
+            </tr>
+            <tr>
+              <td>Transport</td>
+              <td>Reliability, ordering, congestion control</td>
+              <td>TCP, UDP, QUIC</td>
+            </tr>
+            <tr>
+              <td>Network</td>
+              <td>Routing packets between machines</td>
+              <td>IP</td>
+            </tr>
+            <tr>
+              <td>Physical/Data Link</td>
+              <td>Actual transmission over medium</td>
+              <td>Ethernet, Wi-Fi</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="lens">
+          <div class="lens-item">
+            <strong>Problem</strong>
+            Bugs hide when layers are mixed or misunderstood.
+          </div>
+          <div class="lens-item">
+            <strong>Pattern</strong>
+            Identify the layer where the reliability or latency issue starts.
+          </div>
+          <div class="lens-item">
+            <strong>Trade-offs</strong>
+            Abstraction ease vs. precise control of the wire.
+          </div>
+          <div class="lens-item">
+            <strong>Failure modes</strong>
+            Misplaced fixes, such as tuning HTTP for a TCP bottleneck.
+          </div>
+        </div>
+
+        <h3>How a web request actually works</h3>
+        <p>
+          A single web request touches multiple systems: DNS, transport setup, application routing, and response
+          streaming. Each hop adds latency and failure potential.
+        </p>
+        <pre class="mermaid">
+sequenceDiagram
+  participant Client
+  participant DNS
+  participant Edge
+  participant Service
+  participant DB
+  Client->>DNS: Resolve domain
+  DNS-->>Client: IP address
+  Client->>Edge: TCP/TLS handshake
+  Client->>Edge: HTTP request
+  Edge->>Service: Route request
+  Service->>DB: Query data
+  DB-->>Service: Result
+  Service-->>Client: HTTP response
+        </pre>
+        <div class="lens">
+          <div class="lens-item">
+            <strong>Problem</strong>
+            Latency stacks up across every hop.
+          </div>
+          <div class="lens-item">
+            <strong>Pattern</strong>
+            Minimize hops and reuse connections when possible.
+          </div>
+          <div class="lens-item">
+            <strong>Trade-offs</strong>
+            Connection reuse vs. long-lived resource usage.
+          </div>
+          <div class="lens-item">
+            <strong>Failure modes</strong>
+            DNS cache misses, handshake failures, or slow downstream calls.
+          </div>
+        </div>
+
+        <h3>Transport protocols</h3>
+        <p>
+          Transport protocols define reliability and speed. Pick the protocol that matches your latency and delivery
+          guarantees, then validate with your SLA.
+        </p>
+        <pre class="mermaid">
+flowchart LR
+  TCP[TCP: reliable] --> HTTP[HTTP/1.1, HTTP/2]
+  UDP[UDP: fast] --> QUIC[QUIC: reliable over UDP]
+  QUIC --> H3[HTTP/3]
+        </pre>
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Protocol</th>
+              <th>Strengths</th>
+              <th>Weaknesses</th>
+              <th>Use cases</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>TCP</td>
+              <td>Ordered, reliable delivery</td>
+              <td>Handshake + congestion overhead</td>
+              <td>Web traffic, databases</td>
+            </tr>
+            <tr>
+              <td>UDP</td>
+              <td>Low latency, no connection setup</td>
+              <td>No delivery guarantees</td>
+              <td>Streaming, gaming, telemetry</td>
+            </tr>
+            <tr>
+              <td>QUIC</td>
+              <td>Reliable + encrypted + fast handshakes</td>
+              <td>Higher CPU cost, newer ecosystem</td>
+              <td>HTTP/3, mobile clients</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="lens">
+          <div class="lens-item">
+            <strong>Problem</strong>
+            Transport choices shape reliability and latency.
+          </div>
+          <div class="lens-item">
+            <strong>Pattern</strong>
+            Match delivery guarantees to user expectations.
+          </div>
+          <div class="lens-item">
+            <strong>Trade-offs</strong>
+            Reliability vs. speed and CPU overhead.
+          </div>
+          <div class="lens-item">
+            <strong>Failure modes</strong>
+            Packet loss, congestion collapse, or reordering bugs.
+          </div>
+        </div>
+
+        <h3>Application layer protocols</h3>
+        <p>
+          Application protocols express how data flows: request/response, streaming, or bidirectional messaging.
+          External APIs usually favor REST, while internal services favor gRPC. HTTP is stateless by default, and
+          headers enable authentication, caching, and compression strategies. See
+          <a href="solid-design-principles.html">SOLID design</a> for API contract discipline.
+        </p>
+        <pre class="mermaid">
+flowchart LR
+  Client --> REST[REST APIs]
+  Client --> GraphQL[GraphQL]
+  Client --> SSE[SSE Stream]
+  Client <--> WS[WebSockets]
+  ServiceA[Service A] <--> gRPC[gRPC]
+        </pre>
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Protocol</th>
+              <th>Strength</th>
+              <th>Trade-offs</th>
+              <th>Best fit</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>REST</td>
+              <td>Simple, cache-friendly</td>
+              <td>Over-fetching, chatty calls</td>
+              <td>Public APIs</td>
+            </tr>
+            <tr>
+              <td>GraphQL</td>
+              <td>Client-controlled shape</td>
+              <td>Complex execution, caching harder</td>
+              <td>Flexible UI clients</td>
+            </tr>
+            <tr>
+              <td>gRPC</td>
+              <td>Fast, typed, streaming</td>
+              <td>Browser support limited</td>
+              <td>Internal microservices</td>
+            </tr>
+            <tr>
+              <td>SSE</td>
+              <td>Simple server push</td>
+              <td>One-way only</td>
+              <td>Notifications, feeds</td>
+            </tr>
+            <tr>
+              <td>WebSockets</td>
+              <td>Full-duplex messaging</td>
+              <td>Persistent connection cost</td>
+              <td>Chat, collaboration</td>
+            </tr>
+          </tbody>
+        </table>
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>HTTP element</th>
+              <th>Purpose</th>
+              <th>Examples</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Methods</td>
+              <td>Describe intent</td>
+              <td>GET, POST, PUT, PATCH, DELETE</td>
+            </tr>
+            <tr>
+              <td>Status codes</td>
+              <td>Signal outcome</td>
+              <td>2xx success, 3xx redirect, 4xx client error, 5xx server error</td>
+            </tr>
+            <tr>
+              <td>Headers</td>
+              <td>Carry metadata</td>
+              <td>Auth, caching, compression, tracing</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="lens">
+          <div class="lens-item">
+            <strong>Problem</strong>
+            Mismatched protocols create UX and scaling problems.
+          </div>
+          <div class="lens-item">
+            <strong>Pattern</strong>
+            Choose based on interaction style and client ecosystem.
+          </div>
+          <div class="lens-item">
+            <strong>Trade-offs</strong>
+            Flexibility vs. operational complexity.
+          </div>
+          <div class="lens-item">
+            <strong>Failure modes</strong>
+            Overfetching, server overload, or dropped streams.
+          </div>
+        </div>
+
+        <h3>Load balancing fundamentals</h3>
+        <p>
+          Load balancing spreads traffic, protects availability, and supports horizontal scale. Client-side load
+          balancing removes a hop but adds complexity. Server-side load balancing centralizes control.
+        </p>
+        <pre class="mermaid">
+flowchart LR
+  ClientA[Client-side] --> S1[Service A]
+  ClientA --> S2[Service B]
+  ClientB[Client-side] --> S3[Service C]
+  ClientB --> S4[Service D]
+  User[User] --> LB[Server-side LB]
+  LB --> S5[Service E]
+  LB --> S6[Service F]
+        </pre>
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Approach</th>
               <th>Strengths</th>
               <th>Risks</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td>DNS-based</td>
-              <td>DNS returns multiple A/AAAA records</td>
-              <td>Simple, ubiquitous caching</td>
-              <td>Slow propagation, coarse health visibility</td>
-            </tr>
-            <tr>
               <td>Client-side</td>
-              <td>Client queries registry then selects instance</td>
-              <td>Fine-grained routing, fast rebalancing</td>
-              <td>Client complexity, uneven upgrades</td>
+              <td>Lower latency, no central bottleneck</td>
+              <td>Client complexity and uneven upgrades</td>
             </tr>
             <tr>
               <td>Server-side</td>
-              <td>Load balancer resolves and routes</td>
-              <td>Centralized policy, simpler clients</td>
-              <td>Proxy adds latency and failure domain</td>
+              <td>Centralized policy, easier operations</td>
+              <td>Extra hop and critical dependency</td>
             </tr>
           </tbody>
         </table>
-
-        <h3>Reverse proxies and API gateways</h3>
-        <p>
-          Reverse proxies terminate client connections and forward requests to upstream services.
-          API gateways add routing, auth, rate limits, and request shaping at the edge.
-          These patterns centralize cross-cutting concerns but create a critical dependency layer.
-        </p>
-
-        <h3>gRPC vs REST</h3>
-        <p>
-          REST over HTTP is easy to adopt and debuggable, making it a common external interface.
-          gRPC uses HTTP/2 and strongly typed schemas for efficient internal communication.
-          Pick interfaces based on client diversity and latency sensitivity, and link protocol choices to your SLA.
-        </p>
-
-        <table>
+        <table class="comparison-table">
           <thead>
             <tr>
-              <th>Attribute</th>
-              <th>REST</th>
-              <th>gRPC</th>
+              <th>Algorithm</th>
+              <th>What it optimizes</th>
+              <th>Risk</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td>Serialization</td>
-              <td>JSON or text</td>
-              <td>Protobuf</td>
+              <td>Round robin</td>
+              <td>Even distribution</td>
+              <td>Ignores instance health differences</td>
             </tr>
             <tr>
-              <td>Client support</td>
-              <td>Broad, browser-friendly</td>
-              <td>Strong in backend-to-backend</td>
+              <td>Least connections</td>
+              <td>Current load</td>
+              <td>Does not predict spikes</td>
             </tr>
             <tr>
-              <td>Streaming</td>
-              <td>Limited via SSE/WebSocket</td>
-              <td>First-class bidi streams</td>
+              <td>Least latency</td>
+              <td>Fastest response</td>
+              <td>Overloads fastest instance</td>
             </tr>
             <tr>
-              <td>Compatibility</td>
-              <td>Loose versioning</td>
-              <td>Strict schema evolution</td>
+              <td>Hash-based</td>
+              <td>Session affinity</td>
+              <td>Hot keys and uneven load</td>
             </tr>
           </tbody>
         </table>
+        <div class="lens">
+          <div class="lens-item">
+            <strong>Problem</strong>
+            Uneven traffic and hot spots degrade availability.
+          </div>
+          <div class="lens-item">
+            <strong>Pattern</strong>
+            Distribute traffic and protect the hottest path.
+          </div>
+          <div class="lens-item">
+            <strong>Trade-offs</strong>
+            Control vs. added latency and dependency.
+          </div>
+          <div class="lens-item">
+            <strong>Failure modes</strong>
+            Load balancer bottlenecks or sticky-session skew.
+          </div>
+        </div>
 
-        <h3>Backpressure and flow control</h3>
+        <h3>Layer 4 vs Layer 7 load balancers</h3>
         <p>
-          Backpressure protects upstream services when downstream services are saturated.
-          Mechanisms include queue limits, circuit breakers, and token-bucket rate limiting.
+          Layer 4 balancers operate on TCP/UDP, while Layer 7 balancers inspect HTTP content. Use L4 for speed and L7
+          for routing intelligence.
         </p>
+        <pre class="mermaid">
+flowchart LR
+  Client --> L4[L4 LB]
+  Client --> L7[L7 LB]
+  L4 --> TCP[TCP/UDP streams]
+  L7 --> HTTP[HTTP routing rules]
+        </pre>
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th>L4</th>
+              <th>L7</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Operates on</td>
+              <td>TCP/UDP</td>
+              <td>HTTP content</td>
+            </tr>
+            <tr>
+              <td>Performance</td>
+              <td>Very high</td>
+              <td>High, but slightly slower</td>
+            </tr>
+            <tr>
+              <td>Use cases</td>
+              <td>Streaming, WebSockets</td>
+              <td>API routing, canary releases</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="lens">
+          <div class="lens-item">
+            <strong>Problem</strong>
+            Routing needs differ by protocol and payload.
+          </div>
+          <div class="lens-item">
+            <strong>Pattern</strong>
+            Use L4 for speed, L7 for richer rules.
+          </div>
+          <div class="lens-item">
+            <strong>Trade-offs</strong>
+            Speed vs. visibility into requests.
+          </div>
+          <div class="lens-item">
+            <strong>Failure modes</strong>
+            Misrouting, TLS termination errors, or extra latency.
+          </div>
+        </div>
+
+        <h3>High availability and fault tolerance</h3>
+        <p>
+          Availability relies on fast health checks, automated failover, and safe retry policies. See
+          <a href="compute-patterns.html">compute patterns</a> for scaling fundamentals.
+        </p>
+        <pre class="mermaid">
+flowchart LR
+  Client --> LB[Load Balancer]
+  LB --> S1[Healthy Service]
+  LB -. Health Check .-> S2[Unhealthy Service]
+  LB --> S3[Healthy Service]
+  S1 --> Store[(Primary Store)]
+  S3 --> Store
+        </pre>
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Technique</th>
+              <th>Purpose</th>
+              <th>Risk</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Health checks</td>
+              <td>Detect unhealthy nodes</td>
+              <td>False positives if probes are shallow</td>
+            </tr>
+            <tr>
+              <td>Failover</td>
+              <td>Route around failures</td>
+              <td>Overloading remaining nodes</td>
+            </tr>
+            <tr>
+              <td>Retries + timeouts</td>
+              <td>Handle transient errors</td>
+              <td>Retry storms without backoff</td>
+            </tr>
+            <tr>
+              <td>Idempotency</td>
+              <td>Safe retries for writes</td>
+              <td>Complexity in data model</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="lens">
+          <div class="lens-item">
+            <strong>Problem</strong>
+            Failures are inevitable in distributed systems.
+          </div>
+          <div class="lens-item">
+            <strong>Pattern</strong>
+            Detect, isolate, and recover quickly.
+          </div>
+          <div class="lens-item">
+            <strong>Trade-offs</strong>
+            Reliability vs. extra infrastructure and cost.
+          </div>
+          <div class="lens-item">
+            <strong>Failure modes</strong>
+            Cascading failures, retries amplifying load.
+          </div>
+        </div>
+
+        <h3>Geographic scaling and latency</h3>
+        <p>
+          Physics sets the floor on latency. Global systems deploy closer to users and rely on CDNs for static content.
+          See <a href="latency-numbers.html">latency numbers</a> to ground your estimates.
+        </p>
+        <pre class="mermaid">
+flowchart LR
+  UserUS[User: US] --> EdgeUS[US Edge]
+  UserEU[User: EU] --> EdgeEU[EU Edge]
+  EdgeUS --> RegionUS[US Region]
+  EdgeEU --> RegionEU[EU Region]
+  RegionUS --> GlobalDB[(Global Data)]
+  RegionEU --> GlobalDB
+        </pre>
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Approach</th>
+              <th>Benefit</th>
+              <th>Risk</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Regional services</td>
+              <td>Lower user latency</td>
+              <td>Data consistency across regions</td>
+            </tr>
+            <tr>
+              <td>CDN caching</td>
+              <td>Fast static content delivery</td>
+              <td>Stale or inconsistent assets</td>
+            </tr>
+            <tr>
+              <td>Geo-partitioning</td>
+              <td>Local data compliance</td>
+              <td>Cross-region query complexity</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="lens">
+          <div class="lens-item">
+            <strong>Problem</strong>
+            Global users feel latency and jitter quickly.
+          </div>
+          <div class="lens-item">
+            <strong>Pattern</strong>
+            Bring compute and content closer to users.
+          </div>
+          <div class="lens-item">
+            <strong>Trade-offs</strong>
+            Lower latency vs. consistency complexity.
+          </div>
+          <div class="lens-item">
+            <strong>Failure modes</strong>
+            Regional outages or split-brain data.
+          </div>
+        </div>
+
+        <h3>Handling failures gracefully</h3>
+        <p>
+          Resilience patterns protect systems from cascading failures. Combine circuit breakers, retries with backoff,
+          and bulkheads to contain overload.
+        </p>
+        <pre class="mermaid">
+flowchart LR
+  Client --> Service[Service]
+  Service --> Circuit[Circuit Breaker]
+  Circuit --> Queue[(Queue)]
+  Queue --> Worker[Worker Pool]
+  Service --> Rate[Rate Limiter]
+        </pre>
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Pattern</th>
+              <th>Strength</th>
+              <th>Failure mode avoided</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Circuit breaker</td>
+              <td>Stops cascading retries</td>
+              <td>Downstream overload</td>
+            </tr>
+            <tr>
+              <td>Bulkheads</td>
+              <td>Isolates resource pools</td>
+              <td>Noisy neighbor failures</td>
+            </tr>
+            <tr>
+              <td>Rate limiting</td>
+              <td>Controls ingress load</td>
+              <td>Traffic spikes</td>
+            </tr>
+            <tr>
+              <td>Backoff + jitter</td>
+              <td>Spreads retries</td>
+              <td>Retry storms</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="lens">
+          <div class="lens-item">
+            <strong>Problem</strong>
+            Failure cascades can take down healthy systems.
+          </div>
+          <div class="lens-item">
+            <strong>Pattern</strong>
+            Add guardrails to shed or slow traffic under stress.
+          </div>
+          <div class="lens-item">
+            <strong>Trade-offs</strong>
+            Resilience vs. extra latency and complexity.
+          </div>
+          <div class="lens-item">
+            <strong>Failure modes</strong>
+            Overly aggressive breakers blocking real traffic.
+          </div>
+        </div>
+
+        <div class="callout callout--when">
+          <p><strong>When to use:</strong> Any system with retries, shared dependencies, or bursty traffic.</p>
+        </div>
+
+        <h3 id="playground-retries">Playground: retry storms and backpressure</h3>
+        <div id="playground-retries-root"></div>
       </section>
 
       <section>
         <h2>Architecture diagram</h2>
+        <p>
+          This reference architecture shows how networking components fit together in a typical global system.
+        </p>
         <pre class="mermaid">
 flowchart LR
-  Client[Client] --> DNS[Service DNS]
-  DNS --> Edge[API Gateway]
-  Edge --> Proxy[Reverse Proxy]
-  Proxy --> Mesh[Service Mesh]
-  Mesh --> SvcA[Service A]
-  Mesh --> SvcB[Service B]
-  SvcA --> Registry[(Service Registry)]
-  SvcB --> Registry
+  User[User] --> DNS[DNS Resolver]
+  DNS --> Edge[Edge Gateway]
+  Edge --> WAF[WAF + Rate Limits]
+  WAF --> LB[Load Balancer]
+  LB --> ServiceA[Service A]
+  LB --> ServiceB[Service B]
+  ServiceA --> Cache[(Cache)]
+  ServiceB --> Cache
+  ServiceA --> DB[(Primary DB)]
+  ServiceB --> DB
+  Edge --> CDN[CDN]
         </pre>
-      </section>
-
-      <section>
-        <h2>Animated flow</h2>
-        <div class="viz">
-          <svg viewBox="0 0 820 220" role="img" aria-label="Animated networking flow through gateway, proxy, and service mesh.">
-            <rect class="node pulse" x="20" y="80" width="120" height="60" rx="14"></rect>
-            <text x="44" y="115">Client</text>
-
-            <rect class="node" x="170" y="80" width="120" height="60" rx="14"></rect>
-            <text x="185" y="115">Gateway</text>
-
-            <rect class="node" x="320" y="80" width="120" height="60" rx="14"></rect>
-            <text x="340" y="115">Proxy</text>
-
-            <rect class="node pulse-slow" x="470" y="80" width="120" height="60" rx="14"></rect>
-            <text x="485" y="115">Mesh</text>
-
-            <rect class="node pulse" x="620" y="80" width="160" height="60" rx="14"></rect>
-            <text x="640" y="115">Service</text>
-
-            <path class="edge flow" d="M140 110 L170 110"></path>
-            <path class="edge flow" d="M290 110 L320 110"></path>
-            <path class="edge flow" d="M440 110 L470 110"></path>
-            <path class="edge flow" d="M590 110 L620 110"></path>
-
-            <path class="edge flow" d="M620 140 Q410 200 200 140"></path>
-
-            <circle class="packet" r="4">
-              <animateMotion dur="3.4s" repeatCount="indefinite" path="M140 110 L170 110 L320 110 L470 110 L620 110"></animateMotion>
-            </circle>
-            <circle class="packet" r="4">
-              <animateMotion dur="3.4s" begin="1.4s" repeatCount="indefinite" path="M620 140 Q410 200 200 140"></animateMotion>
-            </circle>
-          </svg>
-        </div>
       </section>
 
       <section>
         <h2>Step-by-step flow</h2>
         <ol>
-          <li>The client resolves the service name through DNS and connects to the gateway.</li>
-          <li>The gateway authenticates the request and applies global rate limits.</li>
-          <li>A reverse proxy forwards the request to a service mesh or load balancer.</li>
-          <li>The mesh routes to a healthy instance based on discovery data.</li>
-          <li>The service replies, and headers or traces are added for observability.</li>
+          <li>DNS resolves the domain to an IP address, often using caches and authoritative servers.</li>
+          <li>The client establishes a TCP or QUIC connection (and TLS if needed).</li>
+          <li>The HTTP request is sent with headers, cookies, and authentication tokens.</li>
+          <li>Edge gateways route the request, apply rate limits, and forward to a backend service.</li>
+          <li>The service processes data, calls downstream systems, and prepares the response.</li>
+          <li>The response is returned and the connection is closed or reused with keep-alive.</li>
         </ol>
-      </section>
-
-      <section>
-        <h2 id="playground-retries">Playground: Retry storms and backpressure</h2>
-        <div id="playground-retries-root"></div>
+        <div class="callout callout--warn">
+          <p><strong>Warning:</strong> If you skip DNS, connection setup, or retries, your latency estimates will be wrong.</p>
+        </div>
       </section>
 
       <section>
         <h2>Failure modes</h2>
         <ul>
-          <li>Stale discovery data sends traffic to dead instances, causing spikes in retries.</li>
-          <li>Overloaded gateways or proxies become bottlenecks and amplify tail latency.</li>
-          <li>Misconfigured TLS or routing rules break canary traffic and cause partial outages.</li>
-          <li>Retry storms increase load and create feedback loops without backoff or budgets.</li>
-          <li>Inconsistent timeouts between layers cause slow drain and resource exhaustion.</li>
+          <li>Network partitions split regions and cause inconsistent reads or writes.</li>
+          <li>Server crashes or overload lead to timeouts and retry amplification.</li>
+          <li>Cascading failures overwhelm healthy dependencies.</li>
+          <li>DNS propagation delays send traffic to retired instances.</li>
+          <li>Misconfigured load balancers create hot spots or failed health checks.</li>
         </ul>
       </section>
 
       <section>
         <h2>Trade-offs</h2>
-        <ul>
-          <li>Centralized gateways simplify policy enforcement but increase critical-path dependencies.</li>
-          <li>Client-side discovery improves responsiveness at scale but increases client complexity.</li>
-          <li>gRPC provides efficient internal calls but reduces interoperability with browsers.</li>
-          <li>Aggressive retries improve success rates but increase p99 latency and load.</li>
-          <li>Service meshes improve observability and mTLS but add operational overhead.</li>
-        </ul>
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Trade-off</th>
+              <th>Why it matters</th>
+              <th>Typical choice</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Latency vs. reliability</td>
+              <td>Retries improve reliability but add latency.</td>
+              <td>Retry with budget + backoff.</td>
+            </tr>
+            <tr>
+              <td>Centralized vs. distributed control</td>
+              <td>Gateways simplify policy but add dependencies.</td>
+              <td>Centralized edge, distributed services.</td>
+            </tr>
+            <tr>
+              <td>Consistency vs. availability</td>
+              <td>Geo scale increases partition risk.</td>
+              <td>See <a href="consistency-models.html">consistency models</a>.</td>
+            </tr>
+            <tr>
+              <td>Speed vs. observability</td>
+              <td>L7 inspection adds visibility but costs latency.</td>
+              <td>Use L7 for routing, L4 for streams.</td>
+            </tr>
+          </tbody>
+        </table>
       </section>
 
       <section>
         <h2>Real-world usage</h2>
+        <h3>When to use what (cheat sheet)</h3>
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Scenario</th>
+              <th>Recommended approach</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Public APIs</td>
+              <td>REST over HTTPS</td>
+            </tr>
+            <tr>
+              <td>Internal microservices</td>
+              <td>gRPC + service mesh</td>
+            </tr>
+            <tr>
+              <td>Real-time chat</td>
+              <td>WebSockets</td>
+            </tr>
+            <tr>
+              <td>Notifications</td>
+              <td>Server-Sent Events</td>
+            </tr>
+            <tr>
+              <td>Large static content</td>
+              <td>CDN + edge cache</td>
+            </tr>
+            <tr>
+              <td>Low-latency global apps</td>
+              <td>Edge + regional compute</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Key interview takeaways</h3>
         <ul>
-          <li>Edge gateways like Envoy, NGINX, or Kong front API traffic and enforce policy.</li>
-          <li>Service meshes such as Istio or Linkerd manage mTLS and routing inside clusters.</li>
-          <li>DNS-based discovery is common in Kubernetes via CoreDNS; see <a href="kubernetes-patterns.html">Kubernetes patterns</a>.</li>
-          <li>gRPC is common for internal RPC while REST remains common for public APIs.</li>
+          <li>Clarify requirements before you pick protocols or load balancers.</li>
+          <li>Explain trade-offs instead of listing components.</li>
+          <li>Keep the design simple until scale or reliability demands complexity.</li>
+          <li>Always call out failure modes and how you detect them.</li>
+          <li>Justify latency, retries, and connection reuse with numbers.</li>
         </ul>
+
+        <h3>Summary</h3>
+        <p>
+          Strong networking intuition helps you design reliable, scalable systems and communicate confidently in
+          interviews. Anchor every choice in requirements, use clear diagrams, and be explicit about trade-offs.
+        </p>
       </section>
     </main>
     <footer class="site-footer">

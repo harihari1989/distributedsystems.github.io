@@ -3,11 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Database Patterns | Distributed Systems Visual Guide</title>
+    <title>Database Systems Internals | Distributed Systems Visual Guide</title>
     <link rel="stylesheet" href="../assets/css/theme.css" />
     <script defer src="../assets/js/toggleTheme.js"></script>
     <script defer src="../assets/js/site.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
     <script defer src="../assets/js/mermaid-init.js"></script>
   </head>
@@ -21,6 +20,7 @@
         <a href="compute-patterns.html">Compute</a>
         <a href="database-architectures.html">Storage</a>
         <a href="database-patterns.html" class="is-active" aria-current="page">Databases</a>
+        <a href="distributed-transactions.html">Transactions</a>
         <a href="consistency-models.html">Consistency</a>
         <a href="networking-patterns.html">Networking</a>
         <a href="kubernetes-patterns.html">Kubernetes</a>
@@ -30,332 +30,323 @@
       <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
     </header>
     <main>
-      <h1>Database Patterns</h1>
+      <h1>Database Systems Internals</h1>
 
       <section>
         <h2>Problem framing</h2>
         <p>
-          Product teams need to store facts, relationships, and unstructured knowledge while meeting strict latency and
-          correctness requirements. Query shapes range from transactions and joins to graph traversals and semantic
-          similarity. No single model handles every workload, so modern systems often choose polyglot persistence.
-          Replication and sharding mechanics are covered in <a href="database-architectures.html">storage patterns</a>.
+          Engineers must choose data models and understand internal mechanics that shape latency, durability, and
+          recovery. Write-ahead logging, storage engines, indexes, and concurrency control define the read and write
+          dataflow that shows up in production. This page focuses on internals; sharding and replication mechanics live
+          in <a href="database-architectures.html">storage patterns</a>.
         </p>
       </section>
 
       <section>
         <h2>Core idea / pattern</h2>
-        <h3>SQL (relational)</h3>
+        <h3>Database categories</h3>
         <p>
-          Problem: enforce invariants across entities while supporting transactional updates and ad hoc joins.
-          Pattern: normalized schema, secondary indexes, and ACID transactions, with targeted denormalization when
-          read latency dominates.
-        </p>
-
-        <h3>NoSQL (key-value, document, wide-column)</h3>
-        <p>
-          Problem: sustain high write throughput or flexible schemas with predictable partitioning.
-          Pattern: key-based access with denormalized records, application-managed constraints, and tunable
-          consistency aligned to <a href="consistency-models.html">consistency guarantees</a>.
-        </p>
-
-        <h3>Graph databases</h3>
-        <p>
-          Problem: traverse deep or highly connected relationships without costly multi-join queries.
-          Pattern: store nodes and edges with adjacency indexes, enabling traversal-first queries and path search
-          optimized for relationship depth.
-        </p>
-
-        <h3>RAG databases (vector)</h3>
-        <p>
-          Problem: retrieve semantically similar content to ground AI or search workflows.
-          Pattern: embed text or media into vectors, build ANN indexes, and combine similarity search with metadata
-          filters and reranking to return grounded context.
+          Problem: match the data model to access patterns without over-engineering.
+          Pattern: classify workloads by model and choose the smallest category that meets the SLA.
         </p>
 
         <table>
           <thead>
             <tr>
-              <th>Pattern</th>
-              <th>Best at</th>
-              <th>Primary index</th>
-              <th>Key risks</th>
+              <th>Category</th>
+              <th>Examples</th>
+              <th>Primary use cases</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td>SQL</td>
-              <td>Transactions, joins, reporting</td>
-              <td>B-tree / hash</td>
-              <td>Contention, migration overhead</td>
+              <td>Relational</td>
+              <td>PostgreSQL, MySQL</td>
+              <td>Transactions, joins, strong invariants</td>
             </tr>
             <tr>
-              <td>NoSQL</td>
-              <td>High write scale, flexible schemas</td>
-              <td>Partition key</td>
-              <td>Hot keys, consistency gaps</td>
+              <td>Key-value</td>
+              <td>Redis, DynamoDB</td>
+              <td>Caching, fast lookups</td>
+            </tr>
+            <tr>
+              <td>Document</td>
+              <td>MongoDB, CouchDB</td>
+              <td>Flexible schemas, JSON data</td>
+            </tr>
+            <tr>
+              <td>Columnar / wide-column</td>
+              <td>Cassandra, Bigtable</td>
+              <td>Analytics, write-heavy workloads</td>
+            </tr>
+            <tr>
+              <td>Time-series</td>
+              <td>InfluxDB, TimescaleDB</td>
+              <td>Metrics, telemetry, monitoring</td>
             </tr>
             <tr>
               <td>Graph</td>
-              <td>Relationship queries, path search</td>
-              <td>Adjacency lists</td>
-              <td>Traversal explosions</td>
+              <td>Neo4j, JanusGraph</td>
+              <td>Relationship traversal, path queries</td>
             </tr>
             <tr>
-              <td>RAG / vector</td>
-              <td>Semantic similarity, retrieval</td>
-              <td>ANN index</td>
-              <td>Stale embeddings, recall drift</td>
+              <td>Vector</td>
+              <td>FAISS, Pinecone, Weaviate</td>
+              <td>Semantic search, embedding retrieval</td>
+            </tr>
+            <tr>
+              <td>Geospatial</td>
+              <td>PostGIS, BigQuery GIS</td>
+              <td>Spatial joins, distance queries</td>
             </tr>
           </tbody>
         </table>
+
+        <h3>Storage engine internals</h3>
+        <p>
+          Problem: make writes durable while keeping read latency predictable on disk.
+          Pattern: append changes to a write-ahead log, stage data in memory, and persist with B-tree or LSM layouts.
+          Background compaction or vacuum reconciles on-disk structures.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Structure</th>
+              <th>Strengths</th>
+              <th>Costs</th>
+              <th>Common in</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>B-tree / B+ tree</td>
+              <td>Fast point and range reads</td>
+              <td>Random I/O, slower sustained writes</td>
+              <td>PostgreSQL, MySQL</td>
+            </tr>
+            <tr>
+              <td>LSM tree</td>
+              <td>High write throughput, sequential I/O</td>
+              <td>Read amplification, compaction overhead</td>
+              <td>Cassandra, RocksDB</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Indexing techniques</h3>
+        <p>
+          Problem: accelerate predicates and joins without exploding write cost.
+          Pattern: align index type to query shape and data distribution.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Index type</th>
+              <th>Best for</th>
+              <th>Trade-offs</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Hash</td>
+              <td>Exact key lookups</td>
+              <td>No range queries</td>
+            </tr>
+            <tr>
+              <td>B+ tree</td>
+              <td>Range scans, ordered queries</td>
+              <td>Heavier updates</td>
+            </tr>
+            <tr>
+              <td>Bitmap</td>
+              <td>Low-cardinality filters</td>
+              <td>Memory growth on high cardinality</td>
+            </tr>
+            <tr>
+              <td>R-tree / QuadTree</td>
+              <td>Spatial regions</td>
+              <td>Complex updates</td>
+            </tr>
+            <tr>
+              <td>Vector (ANN)</td>
+              <td>Similarity search</td>
+              <td>Approximate results, rebuild cost</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Transactions and concurrency control</h3>
+        <p>
+          Problem: coordinate concurrent reads and writes without violating invariants.
+          Pattern: ACID transactions implemented with locking or MVCC, tuned by isolation level
+          (read committed, repeatable read, serializable). Distributed consistency trade-offs are covered in
+          <a href="consistency-models.html">consistency models</a>. Cross-shard commit coordination lives in
+        <a href="distributed-transactions.html">Transactions</a>
+        </p>
+
+        <h3>Query planning and execution</h3>
+        <p>
+          Problem: avoid pathological plans as data grows and workloads shift.
+          Pattern: parse into a logical plan, optimize with statistics-driven cost models, and execute using
+          iterator/volcano or vectorized engines.
+        </p>
       </section>
 
       <section>
         <h2>Architecture diagram</h2>
+        <h3>Internal components</h3>
         <pre class="mermaid">
 flowchart LR
-  App[Product API] --> Router[Query Router]
-  Router --> SQL[SQL Store]
-  Router --> NoSQL[NoSQL Store]
-  Router --> Graph[Graph Store]
-  Router --> Vector[Vector Store]
-  Pipeline[Embedding Pipeline] --> Vector
+  Client[Client] --> API[Query API]
+  API --> Plan[Parser + Planner]
+  Plan --> Exec[Execution Engine]
+  Exec --> Txn[Txn Manager]
+  Txn --> Cache[Buffer Cache]
+  Cache --> Storage[Storage Engine]
+  Storage --> Data[Data Files]
+  Txn --> WAL[Write-Ahead Log]
+  WAL --> Data
+  Storage --> Bg[Compaction / Vacuum]
+  Txn --> Repl[Replication Log]
+  Repl --> Replicas[Replicas]
         </pre>
       </section>
 
       <section>
         <h2>Step-by-step flow</h2>
         <ol>
-          <li>A request arrives with a user ID and a search prompt.</li>
-          <li>The query router fetches account state from the SQL store.</li>
-          <li>Feed candidates are loaded from a NoSQL store keyed by user.</li>
-          <li>Graph traversal expands relationship-based candidates.</li>
-          <li>The vector store returns semantically similar documents for grounding.</li>
-          <li>The service merges and ranks results before responding.</li>
+          <li>The client submits a query or mutation through the database API.</li>
+          <li>The parser builds a logical plan and the optimizer picks indexes and joins.</li>
+          <li>The transaction manager assigns a snapshot or locks and validates constraints.</li>
+          <li>Writes append to the WAL before touching in-memory pages or memtables.</li>
+          <li>Reads consult the buffer cache, then hit on-disk pages or SSTables on cache miss.</li>
+          <li>Background compaction or vacuum reconciles on-disk structures as results return.</li>
         </ol>
-        <h3>Interactive: RAG retrieval path</h3>
-        <div class="playground db-playground">
-          <div class="db-stepper">
-            <button class="db-step-button" type="button" id="db-step-prev">Prev</button>
-            <button class="db-step-button" type="button" id="db-step-next">Next</button>
-            <div class="db-step-label" id="db-step-label">Step 1 of 5</div>
-          </div>
-          <div class="viz db-viz" id="db-rag-viz" role="img" aria-label="Interactive RAG retrieval path diagram."></div>
-          <p class="playground-note" id="db-step-note"></p>
-        </div>
+        <h3>Write path dataflow</h3>
+        <pre class="mermaid">
+sequenceDiagram
+  participant Client
+  participant API as Query API
+  participant Txn as Txn Manager
+  participant WAL as WAL
+  participant Cache as Buffer Cache
+  participant Storage as Storage Engine
+  participant Disk as Data Files
+
+  Client->>API: Write request
+  API->>Txn: Begin transaction
+  Txn->>WAL: Append log record
+  WAL-->>Txn: Fsync and ack
+  Txn->>Cache: Update pages/memtable
+  Cache->>Storage: Flush when full
+  Storage->>Disk: Persist pages/SSTables
+  Txn-->>Client: Commit ack
+        </pre>
+        <h3>Read path dataflow</h3>
+        <pre class="mermaid">
+sequenceDiagram
+  participant Client
+  participant API as Query API
+  participant Planner as Planner
+  participant Exec as Execution Engine
+  participant Cache as Buffer Cache
+  participant Storage as Storage Engine
+  participant Disk as Data Files
+
+  Client->>API: Read or query
+  API->>Planner: Parse and plan
+  Planner->>Exec: Physical plan
+  Exec->>Cache: Lookup pages/indexes
+  Cache-->>Exec: Hit or miss
+  Exec->>Storage: Fetch missing data
+  Storage->>Disk: Read blocks
+  Storage-->>Exec: Rows/kv pairs
+  Exec-->>Client: Result set
+        </pre>
       </section>
 
       <section>
         <h2>Failure modes</h2>
         <ul>
-          <li>Long-running SQL transactions hold locks and block critical writes.</li>
-          <li>Hot partition keys overload a subset of NoSQL nodes.</li>
-          <li>Graph traversals fan out across too many edges and spike latency.</li>
-          <li>Embedding pipelines lag, returning stale or missing context.</li>
-          <li>Polyglot systems suffer drift when dual writes diverge.</li>
+          <li>WAL fsync stalls or saturated disks cause tail latency spikes on writes.</li>
+          <li>Long-running transactions hold locks or old MVCC versions and bloat storage.</li>
+          <li>Compaction or vacuum storms amplify writes and slow reads.</li>
+          <li>Buffer cache thrashing drives random I/O and latency variance.</li>
+          <li>Bad statistics cause the optimizer to pick full scans or expensive joins.</li>
         </ul>
       </section>
 
       <section>
         <h2>Trade-offs</h2>
         <ul>
-          <li>SQL offers strong correctness but can be harder to scale horizontally.</li>
-          <li>NoSQL simplifies partitioning yet pushes joins and constraints into application logic.</li>
-          <li>Graph stores excel at relationship queries but require careful traversal limits.</li>
-          <li>Vector stores improve semantic recall at the cost of extra compute and storage.</li>
-          <li>Polyglot persistence improves fit but increases operational complexity.</li>
+          <li>B-trees favor read latency and range scans; LSM trees favor write throughput.</li>
+          <li>More indexes speed reads but slow writes and increase storage overhead.</li>
+          <li>Higher isolation levels reduce anomalies but add contention and latency.</li>
+          <li>Synchronous WAL or replication improves durability but increases write latency.</li>
+          <li>Aggressive compaction or vacuum improves read speed but raises write amplification.</li>
         </ul>
       </section>
 
       <section>
         <h2>Real-world usage</h2>
-        <ul>
-          <li>SQL systems like PostgreSQL or MySQL run core transactional workloads.</li>
-          <li>NoSQL stores like DynamoDB, Cassandra, or MongoDB power high-throughput workloads.</li>
-          <li>Graph databases like Neo4j or JanusGraph support recommendations and fraud graphs.</li>
-          <li>Vector databases like Pinecone, Weaviate, or pgvector serve RAG retrieval layers.</li>
-          <li>Teams combine models while relying on <a href="database-architectures.html">storage patterns</a> for scale.</li>
-        </ul>
+        <p>
+          Workload fit determines the primary system, while scale-out mechanics rely on
+          <a href="database-architectures.html">storage patterns</a> and distributed consistency relies on
+          <a href="consistency-models.html">consistency models</a>.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Use case</th>
+              <th>Recommended database</th>
+              <th>Why it fits</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>OLTP transactions</td>
+              <td>PostgreSQL, MySQL</td>
+              <td>ACID transactions with rich indexing</td>
+            </tr>
+            <tr>
+              <td>Caching and fast lookup</td>
+              <td>Redis, DynamoDB</td>
+              <td>Low-latency key access</td>
+            </tr>
+            <tr>
+              <td>Event ingestion</td>
+              <td>Kafka, Pulsar</td>
+              <td>Append-only throughput</td>
+            </tr>
+            <tr>
+              <td>Analytics</td>
+              <td>BigQuery, Snowflake</td>
+              <td>Columnar execution at scale</td>
+            </tr>
+            <tr>
+              <td>Search</td>
+              <td>Elasticsearch</td>
+              <td>Inverted indexes and ranking</td>
+            </tr>
+            <tr>
+              <td>Metrics and telemetry</td>
+              <td>InfluxDB, TimescaleDB, Prometheus</td>
+              <td>Time partitioning and compression</td>
+            </tr>
+            <tr>
+              <td>AI embeddings</td>
+              <td>Vector databases</td>
+              <td>Approximate nearest neighbor indexes</td>
+            </tr>
+          </tbody>
+        </table>
       </section>
     </main>
     <footer class="site-footer">
       <div>Built for senior engineers and system designers.</div>
       <div>Distributed Systems Visual Guide.</div>
     </footer>
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        if (!window.d3) {
-          return;
-        }
-
-        var container = document.getElementById("db-rag-viz");
-        var stepLabel = document.getElementById("db-step-label");
-        var stepNote = document.getElementById("db-step-note");
-        var prevButton = document.getElementById("db-step-prev");
-        var nextButton = document.getElementById("db-step-next");
-
-        if (!container || !stepLabel || !stepNote || !prevButton || !nextButton) {
-          return;
-        }
-
-        var width = 920;
-        var height = 260;
-        var nodeWidth = 140;
-        var nodeHeight = 44;
-
-        var nodes = [
-          { id: "user", label: "User Query", x: 90, y: 130 },
-          { id: "embed", label: "Embedding", x: 240, y: 130 },
-          { id: "vector", label: "Vector Index", x: 410, y: 80 },
-          { id: "filter", label: "Metadata Filter", x: 410, y: 180 },
-          { id: "docs", label: "Document Store", x: 590, y: 180 },
-          { id: "rerank", label: "Reranker", x: 590, y: 80 },
-          { id: "context", label: "Context Builder", x: 760, y: 130 },
-          { id: "answer", label: "Response", x: 890, y: 130 }
-        ];
-
-        var edges = [
-          { id: "e1", from: "user", to: "embed" },
-          { id: "e2", from: "embed", to: "vector" },
-          { id: "e3", from: "vector", to: "filter" },
-          { id: "e4", from: "filter", to: "docs" },
-          { id: "e5", from: "docs", to: "rerank" },
-          { id: "e6", from: "rerank", to: "context" },
-          { id: "e7", from: "context", to: "answer" }
-        ];
-
-        var steps = [
-          {
-            label: "Embed query",
-            note: "The user query is embedded into a vector representation.",
-            nodes: ["user", "embed"],
-            edges: ["e1"]
-          },
-          {
-            label: "Similarity search",
-            note: "The vector index returns nearest neighbors for the embedding.",
-            nodes: ["embed", "vector"],
-            edges: ["e2"]
-          },
-          {
-            label: "Filter candidates",
-            note: "Metadata filters constrain results to the allowed scope.",
-            nodes: ["vector", "filter", "docs"],
-            edges: ["e3", "e4"]
-          },
-          {
-            label: "Fetch + rerank",
-            note: "Documents are fetched and reranked for relevance and freshness.",
-            nodes: ["docs", "rerank"],
-            edges: ["e5"]
-          },
-          {
-            label: "Assemble response",
-            note: "Top documents form context for the final response.",
-            nodes: ["rerank", "context", "answer"],
-            edges: ["e6", "e7"]
-          }
-        ];
-
-        var nodeById = {};
-        nodes.forEach(function (node) {
-          nodeById[node.id] = node;
-        });
-
-        var svg = window.d3
-          .select(container)
-          .append("svg")
-          .attr("viewBox", "0 0 " + width + " " + height)
-          .attr("role", "presentation");
-
-        var edgeSelection = svg
-          .append("g")
-          .selectAll("line")
-          .data(edges)
-          .enter()
-          .append("line")
-          .attr("class", "db-edge")
-          .attr("x1", function (edge) {
-            return nodeById[edge.from].x;
-          })
-          .attr("y1", function (edge) {
-            return nodeById[edge.from].y;
-          })
-          .attr("x2", function (edge) {
-            return nodeById[edge.to].x;
-          })
-          .attr("y2", function (edge) {
-            return nodeById[edge.to].y;
-          });
-
-        var nodeGroup = svg
-          .append("g")
-          .selectAll("g")
-          .data(nodes)
-          .enter()
-          .append("g");
-
-        nodeGroup
-          .append("rect")
-          .attr("class", "db-node")
-          .attr("x", function (node) {
-            return node.x - nodeWidth / 2;
-          })
-          .attr("y", function (node) {
-            return node.y - nodeHeight / 2;
-          })
-          .attr("width", nodeWidth)
-          .attr("height", nodeHeight)
-          .attr("rx", 14);
-
-        nodeGroup
-          .append("text")
-          .attr("class", "db-label")
-          .attr("x", function (node) {
-            return node.x;
-          })
-          .attr("y", function (node) {
-            return node.y + 4;
-          })
-          .attr("text-anchor", "middle")
-          .text(function (node) {
-            return node.label;
-          });
-
-        var activeIndex = 0;
-
-        function updateStep(index) {
-          activeIndex = index;
-          var step = steps[index];
-
-          nodeGroup.select("rect").classed("is-active", function (node) {
-            return step.nodes.indexOf(node.id) !== -1;
-          });
-
-          edgeSelection.classed("is-active", function (edge) {
-            return step.edges.indexOf(edge.id) !== -1;
-          });
-
-          stepLabel.textContent = "Step " + (index + 1) + " of " + steps.length + ": " + step.label;
-          stepNote.textContent = step.note;
-          prevButton.disabled = index === 0;
-          nextButton.disabled = index === steps.length - 1;
-        }
-
-        prevButton.addEventListener("click", function () {
-          if (activeIndex > 0) {
-            updateStep(activeIndex - 1);
-          }
-        });
-
-        nextButton.addEventListener("click", function () {
-          if (activeIndex < steps.length - 1) {
-            updateStep(activeIndex + 1);
-          }
-        });
-
-        updateStep(0);
-      });
-    </script>
   </body>
 </html>
