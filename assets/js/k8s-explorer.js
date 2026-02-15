@@ -1,5 +1,45 @@
 (function () {
+  function renderFallback(root, reason) {
+    if (!root) {
+      return;
+    }
+
+    var safeReason = reason ? String(reason).replace(/[<>]/g, "") : "";
+    var detail = safeReason ? "Interactive mode unavailable: " + safeReason + "." : "Interactive mode unavailable.";
+
+    root.innerHTML =
+      '<div class="k8s-fallback">' +
+      "<h3>Kubernetes Architecture Explorer</h3>" +
+      "<p>" + detail + " Showing a static architecture view.</p>" +
+      '<div class="k8s-canvas">' +
+      '<svg viewBox="0 0 860 240" role="img" aria-label="Static Kubernetes architecture fallback view.">' +
+      '<rect class="k8s-node is-good" x="30" y="90" width="140" height="60" rx="12"></rect>' +
+      '<text x="100" y="125" text-anchor="middle" dominant-baseline="middle">Ingress</text>' +
+      '<rect class="k8s-node is-good" x="220" y="90" width="140" height="60" rx="12"></rect>' +
+      '<text x="290" y="125" text-anchor="middle" dominant-baseline="middle">Service</text>' +
+      '<rect class="k8s-node is-good" x="420" y="40" width="160" height="60" rx="12"></rect>' +
+      '<text x="500" y="75" text-anchor="middle" dominant-baseline="middle">Pod A</text>' +
+      '<rect class="k8s-node is-good" x="420" y="140" width="160" height="60" rx="12"></rect>' +
+      '<text x="500" y="175" text-anchor="middle" dominant-baseline="middle">Pod B</text>' +
+      '<rect class="k8s-node is-warn" x="640" y="90" width="190" height="60" rx="12"></rect>' +
+      '<text x="735" y="125" text-anchor="middle" dominant-baseline="middle">Controller Loop</text>' +
+      '<path class="k8s-edge is-active" d="M170 120 L220 120"></path>' +
+      '<path class="k8s-edge is-active" d="M360 120 L420 70"></path>' +
+      '<path class="k8s-edge is-active" d="M360 120 L420 170"></path>' +
+      '<path class="k8s-edge is-active" d="M580 70 L640 120"></path>' +
+      '<path class="k8s-edge is-active" d="M580 170 L640 120"></path>' +
+      "</svg>" +
+      "</div>" +
+      "</div>";
+  }
+
   if (!window.React || !window.ReactDOM) {
+    document.addEventListener("DOMContentLoaded", function () {
+      renderFallback(
+        document.getElementById("k8s-explorer-root"),
+        "React runtime not detected"
+      );
+    });
     return;
   }
 
@@ -821,10 +861,14 @@
     if (!root) {
       return;
     }
-    if (window.ReactDOM.createRoot) {
-      window.ReactDOM.createRoot(root).render(e(Explorer));
-    } else {
-      window.ReactDOM.render(e(Explorer), root);
+    try {
+      if (window.ReactDOM.createRoot) {
+        window.ReactDOM.createRoot(root).render(e(Explorer));
+      } else {
+        window.ReactDOM.render(e(Explorer), root);
+      }
+    } catch (error) {
+      renderFallback(root, error && error.message ? error.message : "mount error");
     }
   });
 })();

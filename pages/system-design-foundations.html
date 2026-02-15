@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en" data-color-mode="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>System Design Foundations | Distributed Systems Visual Guide</title>
+  <link rel="stylesheet" href="../assets/css/theme.css" />
+  <script defer src="../assets/js/toggleTheme.js"></script>
+  <script defer src="../assets/js/site.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <script defer src="../assets/js/mermaid-init.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-brand">
+      <a href="../index.html">Distributed Systems Visual Guide</a>
+    </div>
+    <nav class="site-nav">
+      <a href="../index.html">Home</a>
+      <a href="system-design-foundations.html" class="is-active" aria-current="page">System Design</a>
+      <a href="distributed-algorithms.html">Algorithms</a>
+      <a href="compute-patterns.html">Compute</a>
+      <a href="database-architectures.html">Storage</a>
+      <a href="database-patterns.html">Databases</a>
+      <a href="distributed-transactions.html">Transactions</a>
+      <a href="consistency-models.html">Consistency</a>
+      <a href="networking-patterns.html">Networking</a>
+      <a href="kubernetes-patterns.html">Kubernetes</a>
+      <a href="operating-systems.html">Operating Systems</a>
+      <a href="solid-design-principles.html">SOLID Design</a>
+    </nav>
+    <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
+  </header>
+
+  <main>
+    <h1>System Design Foundations</h1>
+
+    <section>
+      <h2>Problem framing</h2>
+      <p>
+        Real systems are constrained by latency, throughput, correctness, and failure recovery at the same time.
+        A design that looks clean at low traffic often breaks under bursty load, partial outages, or data growth.
+        The goal is to choose simple components first, then add coordination only where correctness or scale requires it.
+      </p>
+    </section>
+
+    <section>
+      <h2>Core idea / pattern</h2>
+      <p>
+        Start with clear workload boundaries, then map each boundary to compute, storage, and networking decisions.
+        Use this page as the control plane and deep-dive into
+        <a href="compute-patterns.html">compute</a>,
+        <a href="database-architectures.html">storage</a>,
+        <a href="database-patterns.html">database internals</a>, and
+        <a href="consistency-models.html">consistency models</a>.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Dimension</th>
+            <th>Problem</th>
+            <th>Pattern</th>
+            <th>Trade-offs</th>
+            <th>Failure modes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Request handling</td>
+            <td>Unpredictable traffic and latency spikes</td>
+            <td>Stateless services behind load balancers</td>
+            <td>Simplicity vs cross-service chatter</td>
+            <td>Retry storms, queue buildup, tail latency</td>
+          </tr>
+          <tr>
+            <td>Data ownership</td>
+            <td>Shared mutable state across services</td>
+            <td>Per-domain data ownership with explicit APIs</td>
+            <td>Autonomy vs cross-domain joins</td>
+            <td>Inconsistent reads, duplicate writes, drift</td>
+          </tr>
+          <tr>
+            <td>Reliability</td>
+            <td>Node or zone failures</td>
+            <td>Replication, quorum, health-based failover</td>
+            <td>Higher durability vs write latency</td>
+            <td>Split brain, stale replicas, quorum loss</td>
+          </tr>
+          <tr>
+            <td>Coordination</td>
+            <td>Conflicting updates and leadership decisions</td>
+            <td>Consensus-backed metadata and leases</td>
+            <td>Stronger guarantees vs coordination overhead</td>
+            <td>Leader flapping, lock leaks, stalled progress</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Architecture diagram</h2>
+      <pre class="mermaid">
+flowchart LR
+  Client[Client] --> Edge[Edge Gateway]
+  Edge --> LB[Load Balancer]
+  LB --> API1[Service A]
+  LB --> API2[Service B]
+  API1 --> Cache[(Cache)]
+  API2 --> Cache
+  API1 --> DB[(Primary Database)]
+  API2 --> DB
+  DB --> Repl[(Replicas)]
+  API1 --> MQ[(Event Log / Queue)]
+  API2 --> MQ
+  MQ --> Worker[Async Workers]
+  Worker --> DB
+      </pre>
+    </section>
+
+    <section>
+      <h2>Step-by-step flow</h2>
+      <ol>
+        <li>Define product SLOs: p95 latency, availability target, and correctness invariants.</li>
+        <li>Model core entities and assign a clear owner for each write path.</li>
+        <li>Choose compute topology: synchronous APIs for user paths, async workers for long tasks.</li>
+        <li>Select storage shape based on query pattern and consistency requirements.</li>
+        <li>Add replication and failover with explicit read and write consistency goals.</li>
+        <li>Instrument latency, saturation, and error rates before scaling decisions.</li>
+      </ol>
+
+      <h3>Request lifecycle reference</h3>
+      <pre class="mermaid">
+sequenceDiagram
+  participant U as User
+  participant G as Gateway
+  participant S as Service
+  participant C as Cache
+  participant D as Database
+  participant Q as Queue
+
+  U->>G: Request
+  G->>S: Route with auth and limits
+  S->>C: Read-through cache lookup
+  C-->>S: Hit or miss
+  S->>D: Query or write
+  D-->>S: Result
+  S->>Q: Emit async event
+  S-->>U: Response
+      </pre>
+    </section>
+
+    <section>
+      <h2>Failure modes</h2>
+      <ul>
+        <li>Shared databases without ownership boundaries create coupling and unsafe schema changes.</li>
+        <li>Synchronous chains with many dependencies amplify latency and outage blast radius.</li>
+        <li>No backpressure policy leads to queue growth, timeout cascades, and partial data loss.</li>
+        <li>Region failover without tested runbooks causes extended recovery times.</li>
+        <li>Weak observability hides slow degradation until user-visible failure occurs.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Trade-offs</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Decision</th>
+            <th>Benefit</th>
+            <th>Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Monolith first</td>
+            <td>Fast delivery and simpler ops</td>
+            <td>Harder independent scaling later</td>
+          </tr>
+          <tr>
+            <td>Microservices early</td>
+            <td>Clear domain boundaries</td>
+            <td>Network and observability complexity</td>
+          </tr>
+          <tr>
+            <td>Strong consistency</td>
+            <td>Simpler correctness reasoning</td>
+            <td>Higher coordination latency</td>
+          </tr>
+          <tr>
+            <td>Eventual consistency</td>
+            <td>High availability and throughput</td>
+            <td>Conflict handling and stale reads</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Real-world usage</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>System type</th>
+            <th>Common architecture choices</th>
+            <th>Primary concern</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>E-commerce</td>
+            <td>Stateless APIs + relational core + async inventory workflows</td>
+            <td>Correctness for orders and payments</td>
+          </tr>
+          <tr>
+            <td>Messaging</td>
+            <td>Partitioned logs + fanout workers + presence cache</td>
+            <td>Low latency and durability</td>
+          </tr>
+          <tr>
+            <td>Analytics platform</td>
+            <td>Streaming ingest + columnar storage + batch compute</td>
+            <td>Throughput and cost efficiency</td>
+          </tr>
+          <tr>
+            <td>AI retrieval service</td>
+            <td>Metadata store + vector index + background embedding updates</td>
+            <td>Recall, freshness, and tail latency</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div>Built for senior engineers and system designers.</div>
+    <div>Distributed Systems Visual Guide.</div>
+  </footer>
+</body>
+</html>

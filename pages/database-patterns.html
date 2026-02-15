@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Database Systems Internals | Distributed Systems Visual Guide</title>
+    <title>Build Databases from Scratch | Distributed Systems Visual Guide</title>
     <link rel="stylesheet" href="../assets/css/theme.css" />
     <script defer src="../assets/js/toggleTheme.js"></script>
     <script defer src="../assets/js/site.js"></script>
@@ -29,321 +29,302 @@
       </nav>
       <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
     </header>
+
     <main>
-      <h1>Database Systems Internals</h1>
+      <h1>Build Databases from Scratch</h1>
 
       <section>
         <h2>Problem framing</h2>
         <p>
-          Engineers must choose data models and understand internal mechanics that shape latency, durability, and
-          recovery. Write-ahead logging, storage engines, indexes, and concurrency control define the read and write
-          dataflow that shows up in production. This page focuses on internals; sharding and replication mechanics live
-          in <a href="database-architectures.html">storage patterns</a>.
+          A database is not one feature. It is a pipeline for correctness, durability, query speed, and recovery under
+          failure. To build one from scratch, define the write contract first, then layer indexing, replication,
+          background maintenance, and observability. Scale mechanics are covered in
+          <a href="database-architectures.html">storage and partitioning patterns</a>.
         </p>
       </section>
 
       <section>
         <h2>Core idea / pattern</h2>
-        <h3>Database categories</h3>
-        <p>
-          Problem: match the data model to access patterns without over-engineering.
-          Pattern: classify workloads by model and choose the smallest category that meets the SLA.
-        </p>
-
+        <h3>Build in layers</h3>
         <table>
           <thead>
             <tr>
-              <th>Category</th>
-              <th>Examples</th>
-              <th>Primary use cases</th>
+              <th>Layer</th>
+              <th>Problem</th>
+              <th>Pattern</th>
+              <th>Trade-offs</th>
+              <th>Failure modes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>API and parser</td>
+              <td>Unclear query contract</td>
+              <td>Define strict request grammar and validation</td>
+              <td>Flexibility vs deterministic execution</td>
+              <td>Ambiguous semantics and hard-to-debug behavior</td>
+            </tr>
+            <tr>
+              <td>Durability</td>
+              <td>Data loss on crash</td>
+              <td>Write-ahead log before applying state</td>
+              <td>Latency overhead for fsync</td>
+              <td>Torn writes, replay gaps, corrupt logs</td>
+            </tr>
+            <tr>
+              <td>Storage engine</td>
+              <td>Slow reads or writes at scale</td>
+              <td>B+ tree for read locality or LSM for write throughput</td>
+              <td>Read latency vs write amplification</td>
+              <td>Compaction storms, fragmentation, cache churn</td>
+            </tr>
+            <tr>
+              <td>Coordination</td>
+              <td>Replica divergence</td>
+              <td>Quorum and leader election</td>
+              <td>Stronger consistency vs lower availability</td>
+              <td>Split brain and stale reads</td>
+            </tr>
+            <tr>
+              <td>Background maintenance</td>
+              <td>Performance decay over time</td>
+              <td>Compaction, vacuum, reindexing, repair</td>
+              <td>Steady overhead vs predictable latency</td>
+              <td>Write stalls and long tail spikes</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Choose model by workload</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Database type</th>
+              <th>Primary data model</th>
+              <th>Storage/index defaults</th>
+              <th>Best-fit workloads</th>
+              <th>Main risk</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td>Relational</td>
-              <td>PostgreSQL, MySQL</td>
-              <td>Transactions, joins, strong invariants</td>
+              <td>Tables, keys, joins, constraints</td>
+              <td>WAL + B+ tree + MVCC</td>
+              <td>OLTP, billing, inventory, ledgers</td>
+              <td>Contention under heavy multi-row writes</td>
             </tr>
             <tr>
-              <td>Key-value</td>
-              <td>Redis, DynamoDB</td>
-              <td>Caching, fast lookups</td>
-            </tr>
-            <tr>
-              <td>Document</td>
-              <td>MongoDB, CouchDB</td>
-              <td>Flexible schemas, JSON data</td>
-            </tr>
-            <tr>
-              <td>Columnar / wide-column</td>
-              <td>Cassandra, Bigtable</td>
-              <td>Analytics, write-heavy workloads</td>
-            </tr>
-            <tr>
-              <td>Time-series</td>
-              <td>InfluxDB, TimescaleDB</td>
-              <td>Metrics, telemetry, monitoring</td>
-            </tr>
-            <tr>
-              <td>Graph</td>
-              <td>Neo4j, JanusGraph</td>
-              <td>Relationship traversal, path queries</td>
+              <td>Non-relational</td>
+              <td>Key-value, document, wide-column</td>
+              <td>Partitioning + replication + LSM</td>
+              <td>High-ingest events, profiles, session state</td>
+              <td>Cross-entity consistency complexity</td>
             </tr>
             <tr>
               <td>Vector</td>
-              <td>FAISS, Pinecone, Weaviate</td>
-              <td>Semantic search, embedding retrieval</td>
-            </tr>
-            <tr>
-              <td>Geospatial</td>
-              <td>PostGIS, BigQuery GIS</td>
-              <td>Spatial joins, distance queries</td>
+              <td>Embedding vectors + metadata filters</td>
+              <td>ANN index (HNSW or IVF) + metadata store</td>
+              <td>Semantic search, RAG, recommendation</td>
+              <td>Recall-latency tuning and stale embeddings</td>
             </tr>
           </tbody>
         </table>
 
-        <h3>Storage engine internals</h3>
         <p>
-          Problem: make writes durable while keeping read latency predictable on disk.
-          Pattern: append changes to a write-ahead log, stage data in memory, and persist with B-tree or LSM layouts.
-          Background compaction or vacuum reconciles on-disk structures.
-        </p>
-
-        <table>
-          <thead>
-            <tr>
-              <th>Structure</th>
-              <th>Strengths</th>
-              <th>Costs</th>
-              <th>Common in</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>B-tree / B+ tree</td>
-              <td>Fast point and range reads</td>
-              <td>Random I/O, slower sustained writes</td>
-              <td>PostgreSQL, MySQL</td>
-            </tr>
-            <tr>
-              <td>LSM tree</td>
-              <td>High write throughput, sequential I/O</td>
-              <td>Read amplification, compaction overhead</td>
-              <td>Cassandra, RocksDB</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <h3>Indexing techniques</h3>
-        <p>
-          Problem: accelerate predicates and joins without exploding write cost.
-          Pattern: align index type to query shape and data distribution.
-        </p>
-
-        <table>
-          <thead>
-            <tr>
-              <th>Index type</th>
-              <th>Best for</th>
-              <th>Trade-offs</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Hash</td>
-              <td>Exact key lookups</td>
-              <td>No range queries</td>
-            </tr>
-            <tr>
-              <td>B+ tree</td>
-              <td>Range scans, ordered queries</td>
-              <td>Heavier updates</td>
-            </tr>
-            <tr>
-              <td>Bitmap</td>
-              <td>Low-cardinality filters</td>
-              <td>Memory growth on high cardinality</td>
-            </tr>
-            <tr>
-              <td>R-tree / QuadTree</td>
-              <td>Spatial regions</td>
-              <td>Complex updates</td>
-            </tr>
-            <tr>
-              <td>Vector (ANN)</td>
-              <td>Similarity search</td>
-              <td>Approximate results, rebuild cost</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <h3>Transactions and concurrency control</h3>
-        <p>
-          Problem: coordinate concurrent reads and writes without violating invariants.
-          Pattern: ACID transactions implemented with locking or MVCC, tuned by isolation level
-          (read committed, repeatable read, serializable). Distributed consistency trade-offs are covered in
-          <a href="consistency-models.html">consistency models</a>. Cross-shard commit coordination lives in
-        <a href="distributed-transactions.html">Transactions</a>
-        </p>
-
-        <h3>Query planning and execution</h3>
-        <p>
-          Problem: avoid pathological plans as data grows and workloads shift.
-          Pattern: parse into a logical plan, optimize with statistics-driven cost models, and execute using
-          iterator/volcano or vectorized engines.
+          For algorithm mechanics used by these systems, see
+          <a href="distributed-algorithms.html">distributed algorithms</a>.
         </p>
       </section>
 
       <section>
         <h2>Architecture diagram</h2>
-        <h3>Internal components</h3>
         <pre class="mermaid">
 flowchart LR
   Client[Client] --> API[Query API]
-  API --> Plan[Parser + Planner]
-  Plan --> Exec[Execution Engine]
-  Exec --> Txn[Txn Manager]
-  Txn --> Cache[Buffer Cache]
-  Cache --> Storage[Storage Engine]
-  Storage --> Data[Data Files]
+  API --> Planner[Parser and Planner]
+  Planner --> Txn[Transaction and Concurrency]
   Txn --> WAL[Write-Ahead Log]
-  WAL --> Data
-  Storage --> Bg[Compaction / Vacuum]
-  Txn --> Repl[Replication Log]
-  Repl --> Replicas[Replicas]
+  Txn --> Engine[Storage Engine]
+  Engine --> Index[Index Structures]
+  Engine --> Data[Data Files]
+  Engine --> Bg[Compaction or Vacuum]
+  Engine --> Repl[Replication Stream]
+  Repl --> Replicas[(Replicas)]
+  Index --> ANN[Vector ANN Index]
+  Index --> BTree[B+ Tree]
+  Index --> LSM[LSM Levels]
         </pre>
       </section>
 
       <section>
         <h2>Step-by-step flow</h2>
+
+        <h3>Relational database build path</h3>
         <ol>
-          <li>The client submits a query or mutation through the database API.</li>
-          <li>The parser builds a logical plan and the optimizer picks indexes and joins.</li>
-          <li>The transaction manager assigns a snapshot or locks and validates constraints.</li>
-          <li>Writes append to the WAL before touching in-memory pages or memtables.</li>
-          <li>Reads consult the buffer cache, then hit on-disk pages or SSTables on cache miss.</li>
-          <li>Background compaction or vacuum reconciles on-disk structures as results return.</li>
+          <li>Define schema, primary keys, foreign keys, and invariant checks.</li>
+          <li>Implement WAL append and crash recovery replay.</li>
+          <li>Build B+ tree indexes for primary and selective secondary access paths.</li>
+          <li>Add MVCC snapshots and lock manager for concurrent transactions.</li>
+          <li>Implement optimizer rules for join order, index scans, and predicate pushdown.</li>
+          <li>Add replication, backup, and point-in-time restore.</li>
         </ol>
-        <h3>Write path dataflow</h3>
         <pre class="mermaid">
 sequenceDiagram
-  participant Client
-  participant API as Query API
-  participant Txn as Txn Manager
-  participant WAL as WAL
-  participant Cache as Buffer Cache
-  participant Storage as Storage Engine
-  participant Disk as Data Files
+  participant App
+  participant SQL as SQL Layer
+  participant Txn
+  participant WAL
+  participant BTree
+  participant Disk
 
-  Client->>API: Write request
-  API->>Txn: Begin transaction
+  App->>SQL: INSERT/UPDATE
+  SQL->>Txn: Validate constraints
   Txn->>WAL: Append log record
-  WAL-->>Txn: Fsync and ack
-  Txn->>Cache: Update pages/memtable
-  Cache->>Storage: Flush when full
-  Storage->>Disk: Persist pages/SSTables
-  Txn-->>Client: Commit ack
+  WAL-->>Txn: Durable ack
+  Txn->>BTree: Update index pages
+  BTree->>Disk: Flush dirty pages
+  Txn-->>App: Commit success
         </pre>
-        <h3>Read path dataflow</h3>
+
+        <h3>Non-relational database build path</h3>
+        <ol>
+          <li>Pick partition key and replica strategy per entity.</li>
+          <li>Route writes by partition and append to commit log.</li>
+          <li>Buffer in memtable and flush immutable SSTables.</li>
+          <li>Run compaction to merge segments and remove tombstones.</li>
+          <li>Expose quorum-tunable reads and writes for consistency control.</li>
+          <li>Run anti-entropy repair between replicas.</li>
+        </ol>
+        <pre class="mermaid">
+flowchart LR
+  Client --> Router[Partition Router]
+  Router --> Log[Commit Log]
+  Log --> Mem[Memtable]
+  Mem --> SST[SSTables]
+  SST --> Compact[Compaction]
+  Router --> Repl[Replica Set]
+  Repl --> Read[Quorum Read]
+  Repl --> Write[Quorum Write]
+        </pre>
+
+        <h3>Vector database build path</h3>
+        <ol>
+          <li>Generate embeddings and persist source metadata.</li>
+          <li>Normalize vectors and choose ANN index strategy.</li>
+          <li>Build index partitions and shard by tenant or semantic domain.</li>
+          <li>At query time, encode text into vector and search top-k neighbors.</li>
+          <li>Apply metadata filters and rerank candidates for quality.</li>
+          <li>Rebuild or incrementally update indexes as embeddings drift.</li>
+        </ol>
         <pre class="mermaid">
 sequenceDiagram
-  participant Client
-  participant API as Query API
-  participant Planner as Planner
-  participant Exec as Execution Engine
-  participant Cache as Buffer Cache
-  participant Storage as Storage Engine
-  participant Disk as Data Files
+  participant User
+  participant API
+  participant Embed as Embedding Model
+  participant Index as ANN Index
+  participant Meta as Metadata Store
 
-  Client->>API: Read or query
-  API->>Planner: Parse and plan
-  Planner->>Exec: Physical plan
-  Exec->>Cache: Lookup pages/indexes
-  Cache-->>Exec: Hit or miss
-  Exec->>Storage: Fetch missing data
-  Storage->>Disk: Read blocks
-  Storage-->>Exec: Rows/kv pairs
-  Exec-->>Client: Result set
+  User->>API: Semantic query
+  API->>Embed: Encode text to vector
+  Embed-->>API: Query vector
+  API->>Index: kNN search
+  Index-->>API: Candidate IDs
+  API->>Meta: Filter and fetch payload
+  Meta-->>API: Matched documents
+  API-->>User: Ranked results
         </pre>
       </section>
 
       <section>
         <h2>Failure modes</h2>
         <ul>
-          <li>WAL fsync stalls or saturated disks cause tail latency spikes on writes.</li>
-          <li>Long-running transactions hold locks or old MVCC versions and bloat storage.</li>
-          <li>Compaction or vacuum storms amplify writes and slow reads.</li>
-          <li>Buffer cache thrashing drives random I/O and latency variance.</li>
-          <li>Bad statistics cause the optimizer to pick full scans or expensive joins.</li>
+          <li>Relational: lock contention and long transactions stall hot tables.</li>
+          <li>Relational: checkpoint lag increases crash recovery time.</li>
+          <li>Non-relational: bad partition keys create hot shards and uneven storage growth.</li>
+          <li>Non-relational: compaction backlog increases read amplification and latency variance.</li>
+          <li>Vector: stale embeddings degrade relevance even when latency is stable.</li>
+          <li>Vector: ANN parameter mis-tuning causes low recall or excessive memory usage.</li>
+          <li>All types: untested backup restore paths produce silent data loss risk.</li>
         </ul>
       </section>
 
       <section>
         <h2>Trade-offs</h2>
-        <ul>
-          <li>B-trees favor read latency and range scans; LSM trees favor write throughput.</li>
-          <li>More indexes speed reads but slow writes and increase storage overhead.</li>
-          <li>Higher isolation levels reduce anomalies but add contention and latency.</li>
-          <li>Synchronous WAL or replication improves durability but increases write latency.</li>
-          <li>Aggressive compaction or vacuum improves read speed but raises write amplification.</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>Real-world usage</h2>
-        <p>
-          Workload fit determines the primary system, while scale-out mechanics rely on
-          <a href="database-architectures.html">storage patterns</a> and distributed consistency relies on
-          <a href="consistency-models.html">consistency models</a>.
-        </p>
         <table>
           <thead>
             <tr>
-              <th>Use case</th>
-              <th>Recommended database</th>
-              <th>Why it fits</th>
+              <th>Choice</th>
+              <th>Benefit</th>
+              <th>Cost</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td>OLTP transactions</td>
-              <td>PostgreSQL, MySQL</td>
-              <td>ACID transactions with rich indexing</td>
+              <td>Relational constraints everywhere</td>
+              <td>Strong correctness and clear invariants</td>
+              <td>Higher write contention and schema migration effort</td>
             </tr>
             <tr>
-              <td>Caching and fast lookup</td>
-              <td>Redis, DynamoDB</td>
-              <td>Low-latency key access</td>
+              <td>Wide denormalization in NoSQL</td>
+              <td>Fast reads at high scale</td>
+              <td>Duplicate data and reconciliation logic</td>
             </tr>
             <tr>
-              <td>Event ingestion</td>
-              <td>Kafka, Pulsar</td>
-              <td>Append-only throughput</td>
+              <td>Aggressive vector index compression</td>
+              <td>Lower memory footprint</td>
+              <td>Potential recall drop</td>
             </tr>
             <tr>
-              <td>Analytics</td>
-              <td>BigQuery, Snowflake</td>
-              <td>Columnar execution at scale</td>
+              <td>Strong quorum settings</td>
+              <td>Better read-after-write guarantees</td>
+              <td>Higher latency and lower partition tolerance</td>
             </tr>
             <tr>
-              <td>Search</td>
-              <td>Elasticsearch</td>
-              <td>Inverted indexes and ranking</td>
+              <td>Frequent background maintenance</td>
+              <td>Stable read performance</td>
+              <td>Predictable but persistent resource overhead</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Real-world usage</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Product need</th>
+              <th>Recommended primary store</th>
+              <th>Why</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Orders, payments, and account balance</td>
+              <td>Relational database</td>
+              <td>Strict constraints and transactional integrity</td>
             </tr>
             <tr>
-              <td>Metrics and telemetry</td>
-              <td>InfluxDB, TimescaleDB, Prometheus</td>
-              <td>Time partitioning and compression</td>
+              <td>User activity feed and high-volume events</td>
+              <td>Non-relational LSM-based store</td>
+              <td>High write throughput and horizontal partitioning</td>
             </tr>
             <tr>
-              <td>AI embeddings</td>
-              <td>Vector databases</td>
-              <td>Approximate nearest neighbor indexes</td>
+              <td>Semantic document search</td>
+              <td>Vector database plus metadata store</td>
+              <td>Fast nearest-neighbor retrieval with filtering</td>
+            </tr>
+            <tr>
+              <td>Hybrid retrieval applications</td>
+              <td>Relational metadata + vector index + cache</td>
+              <td>Combines correctness with semantic relevance</td>
             </tr>
           </tbody>
         </table>
       </section>
     </main>
+
     <footer class="site-footer">
       <div>Built for senior engineers and system designers.</div>
       <div>Distributed Systems Visual Guide.</div>
