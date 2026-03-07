@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en" data-color-mode="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Build a Postgres-like Database in Python (TUI) | Distributed Systems Visual Guide</title>
+    <link rel="stylesheet" href="../assets/css/theme.css" />
+    <script defer src="../assets/js/toggleTheme.js"></script>
+    <script defer src="../assets/js/site.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script defer src="../assets/js/mermaid-init.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-brand">
+        <a href="../index.html">Distributed Systems Visual Guide</a>
+      </div>
+      <nav class="site-nav">
+        <a href="../index.html">Home</a>
+        <a href="system-design-foundations.html">System Design</a>
+        <a href="distributed-algorithms.html">Algorithms</a>
+        <a href="compute-patterns.html">Compute</a>
+        <a href="database-architectures.html">Storage</a>
+        <a href="database-patterns.html">Databases</a>
+        <a href="postgres-from-scratch-python-tui.html" class="is-active" aria-current="page">Postgres in Python</a>
+        <a href="distributed-transactions.html">Transactions</a>
+        <a href="consistency-models.html">Consistency</a>
+        <a href="networking-patterns.html">Networking</a>
+        <a href="latency-numbers.html">Latency</a>
+        <a href="kubernetes-patterns.html">Kubernetes</a>
+        <a href="operating-systems.html">Operating Systems</a>
+        <a href="solid-design-principles.html">SOLID Design</a>
+      </nav>
+      <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
+    </header>
+
+    <main>
+      <h1>Build a Postgres-like Database in Python (TUI)</h1>
+
+      <section>
+        <h2>Problem framing</h2>
+        <p>
+          A transactional database must solve correctness, durability, and query performance at the same time.
+          If you write directly to table files without a log, crashes can corrupt state. If you ignore concurrency,
+          readers see inconsistent data. If you skip indexing, every query becomes a full table scan.
+        </p>
+        <p>
+          This page ships a runnable Python implementation in <code>scripts/mini_postgres_tui.py</code> with three engines:
+          a PostgreSQL-inspired row store, a DynamoDB-inspired key-value model, and a vector database model with ANN-style search.
+          The same TUI can explain all modes:
+          parser, planner/access path, durability model, indexing, and recovery behavior. For broader architecture choices, see
+          <a href="database-architectures.html">storage and data patterns</a> and
+          <a href="database-patterns.html">database patterns</a>.
+        </p>
+      </section>
+
+      <section>
+        <h2>Core idea / pattern</h2>
+
+        <h3>Layer the engine around a write contract</h3>
+        <p>
+          The central contract is write-ahead logging: commit records are durably persisted before data files are treated as committed state.
+          On restart, replay WAL records newer than the last applied transaction ID. MVCC then defines what each snapshot can see.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Layer</th>
+              <th>Problem</th>
+              <th>Pattern</th>
+              <th>Trade-off</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Parser</td>
+              <td>Ambiguous query semantics</td>
+              <td>Strict SQL subset grammar</td>
+              <td>Limited feature surface</td>
+            </tr>
+            <tr>
+              <td>Planner</td>
+              <td>Slow reads on large tables</td>
+              <td>Choose Seq Scan vs Index Scan</td>
+              <td>Simple heuristics can mis-predict</td>
+            </tr>
+            <tr>
+              <td>Executor + MVCC</td>
+              <td>Inconsistent reads under writes</td>
+              <td>xmin/xmax visibility rules</td>
+              <td>Version bloat needs vacuuming</td>
+            </tr>
+            <tr>
+              <td>WAL + Recovery</td>
+              <td>Lost commits after crash</td>
+              <td>Append BEGIN/OP/COMMIT then replay</td>
+              <td>Extra fsync latency on commit</td>
+            </tr>
+            <tr>
+              <td>Indexes</td>
+              <td>Repeated table scans</td>
+              <td>Persist key to row-id maps</td>
+              <td>Write amplification on updates</td>
+            </tr>
+            <tr>
+              <td>TUI shell</td>
+              <td>Hard to inspect state while learning</td>
+              <td>Live log pane + runtime status pane</td>
+              <td>Terminal-size constraints</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Educational scope vs PostgreSQL</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Subsystem</th>
+              <th>PostgreSQL</th>
+              <th>This implementation</th>
+              <th>Impact</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Storage pages</td>
+              <td>8KB pages, buffer manager, FSM/VM</td>
+              <td>JSONL heap-version files</td>
+              <td>Simpler internals, lower performance realism</td>
+            </tr>
+            <tr>
+              <td>Indexes</td>
+              <td>B-tree/GIN/GiST/BRIN</td>
+              <td>Single-column equality index map</td>
+              <td>Good for scan choice intuition only</td>
+            </tr>
+            <tr>
+              <td>Concurrency</td>
+              <td>MVCC + lock manager + deadlock detection</td>
+              <td>Single-process transaction buffering</td>
+              <td>No lock waits or deadlock cycles</td>
+            </tr>
+            <tr>
+              <td>WAL</td>
+              <td>Page-level WAL records + checkpoints</td>
+              <td>Logical operation WAL records</td>
+              <td>Replay concept is preserved</td>
+            </tr>
+            <tr>
+              <td>Query optimizer</td>
+              <td>Cost model + statistics + join planning</td>
+              <td>Rule-based scan selection</td>
+              <td>No join-order optimization</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Architecture diagram</h2>
+        <pre class="mermaid">
+flowchart TD
+  TUI[TUI / CLI]
+  Parser[SQL Parser]
+  Planner[Planner]
+  Exec[Executor]
+  Txn[Transaction Manager]
+  WAL[WAL File]
+  Heap[Heap Version Files]
+  Index[Index Files]
+  Recovery[Recovery Replay]
+
+  TUI --> Parser
+  Parser --> Planner
+  Planner --> Exec
+  Exec --> Txn
+  Txn --> WAL
+  Txn --> Heap
+  Exec --> Index
+  WAL --> Recovery
+  Recovery --> Heap
+  Recovery --> Index
+        </pre>
+
+        <pre class="mermaid">
+sequenceDiagram
+  participant Client as TUI Client
+  participant Parse as Parser/Planner
+  participant Txn as Transaction
+  participant WAL as WAL
+  participant Heap as Heap Store
+  participant Idx as Index Store
+
+  Client->>Parse: UPDATE users SET balance=120 WHERE id=1
+  Parse->>Txn: Build operation
+  Txn->>WAL: BEGIN + OP + COMMIT (fsync)
+  WAL-->>Txn: Durable log ack
+  Txn->>Heap: Mark old version xmax, append new version xmin
+  Txn->>Idx: Rebuild affected index entries
+  Txn-->>Client: Commit success
+        </pre>
+      </section>
+
+      <section>
+        <h2>Step-by-step flow</h2>
+
+        <h3>1) Parse and validate statements</h3>
+        <ol>
+          <li>The parser normalizes a SQL subset: <code>CREATE TABLE</code>, <code>CREATE INDEX</code>, <code>INSERT</code>, <code>SELECT</code>, <code>UPDATE</code>, <code>DELETE</code>, and transaction verbs.</li>
+          <li>Schema and type checks happen before execution so bad writes fail early.</li>
+          <li>WHERE clauses are compiled into column/operator/value predicates.</li>
+        </ol>
+
+        <h3>2) Plan read path</h3>
+        <ol>
+          <li>If WHERE is a single equality predicate on an indexed column, planner chooses Index Scan.</li>
+          <li>Otherwise planner falls back to Seq Scan over visible row versions.</li>
+          <li><code>EXPLAIN SELECT ...</code> shows the chosen path and estimated rows.</li>
+        </ol>
+
+        <h3>3) Execute writes with MVCC semantics</h3>
+        <ol>
+          <li>Each row version stores <code>xmin</code> (creator xid) and <code>xmax</code> (deleter/updater xid).</li>
+          <li>UPDATE is implemented as delete+insert: old version gets <code>xmax</code>, new version gets new <code>xmin</code>.</li>
+          <li>VACUUM removes obsolete versions once they are no longer visible.</li>
+        </ol>
+
+        <h3>4) Commit with WAL-first durability</h3>
+        <ol>
+          <li>On commit, engine appends <code>BEGIN</code>, one or more <code>OP</code> records, then <code>COMMIT</code> to WAL.</li>
+          <li>WAL is fsynced before data files are considered committed.</li>
+          <li>After WAL durability, heap and index files are updated and <code>applied_xid</code> advances.</li>
+        </ol>
+
+        <h3>5) Recover from crash</h3>
+        <ol>
+          <li>Startup reads WAL and finds committed transactions with xid greater than last <code>applied_xid</code>.</li>
+          <li>Missing committed operations are replayed to heap and indexes.</li>
+          <li>State metadata is updated so replay is not repeated on next boot.</li>
+        </ol>
+
+        <h3>6) Operate through the CLI TUI</h3>
+        <p>
+          The TUI displays command output on the left and runtime internals on the right: counters, storage state, and a concept panel.
+          Use Up/Down for history, Enter to execute, and Esc to exit.
+        </p>
+        <pre><code>python3 scripts/mini_postgres_tui.py --data-dir /tmp/mini_pg
+python3 scripts/mini_postgres_tui.py --engine postgres --data-dir /tmp/mini_pg --execute "CREATE TABLE users (id INT, name TEXT, balance INT)"
+python3 scripts/mini_postgres_tui.py --engine postgres --data-dir /tmp/mini_pg --execute "EXPLAIN SELECT * FROM users WHERE id = 1"</code></pre>
+
+        <h3>7) Switch the same TUI to DynamoDB mode</h3>
+        <p>
+          Use <code>--engine dynamo</code> to run a DynamoDB-inspired model with partition/sort keys, QUERY vs SCAN behavior,
+          and eventually consistent GSI refresh controlled by <code>TICK</code>.
+        </p>
+        <pre><code>python3 scripts/mini_postgres_tui.py --engine dynamo --data-dir /tmp/mini_ddb
+python3 scripts/mini_postgres_tui.py --engine dynamo --data-dir /tmp/mini_ddb --execute "CREATE TABLE orders PK user_id SK order_id"
+python3 scripts/mini_postgres_tui.py --engine dynamo --data-dir /tmp/mini_ddb --execute "CREATE GSI gsi_email ON orders (email)"
+python3 scripts/mini_postgres_tui.py --engine dynamo --data-dir /tmp/mini_ddb --execute "QUERY GSI gsi_email email='a@example.com'"</code></pre>
+
+        <h3>8) Switch the same TUI to VectorDB mode</h3>
+        <p>
+          Use <code>--engine vector</code> to run a vector database with collections, top-k similarity search, ANN-style partition probing,
+          metadata filters, and explicit index refresh controls.
+        </p>
+        <pre><code>python3 scripts/mini_postgres_tui.py --engine vector --data-dir /tmp/mini_vdb
+python3 scripts/mini_postgres_tui.py --engine vector --data-dir /tmp/mini_vdb --execute "CREATE COLLECTION docs DIM 4 METRIC COSINE PARTITIONS 8"
+python3 scripts/mini_postgres_tui.py --engine vector --data-dir /tmp/mini_vdb --execute "UPSERT docs id=doc1 vector=[0.1,0.2,0.3,0.4] topic=ml"
+python3 scripts/mini_postgres_tui.py --engine vector --data-dir /tmp/mini_vdb --execute "SEARCH docs vector=[0.1,0.2,0.3,0.4] TOPK 5 PROBE 3 FILTER topic=ml"</code></pre>
+
+        <table>
+          <thead>
+            <tr>
+              <th>TUI mode</th>
+              <th>Primary access path</th>
+              <th>Durability model</th>
+              <th>Consistency model in this toy</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Postgres mode</td>
+              <td>Seq Scan or Index Scan</td>
+              <td>WAL + MVCC heap versions</td>
+              <td>Snapshot visibility via <code>xmin/xmax</code></td>
+            </tr>
+            <tr>
+              <td>Dynamo mode</td>
+              <td>Key lookup, partition QUERY, GSI QUERY, SCAN</td>
+              <td>WAL + key-value item files</td>
+              <td>Base table reads + eventual GSI refresh via <code>TICK</code></td>
+            </tr>
+            <tr>
+              <td>Vector mode</td>
+              <td>ANN partition search or exact vector scan</td>
+              <td>WAL + vector/metadata item files</td>
+              <td>Approximate ANN with <code>PROBE</code>, exact fallback with <code>EXACT</code>, index freshness via <code>TICK</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Failure modes</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Failure mode</th>
+              <th>What breaks</th>
+              <th>Toy-engine handling</th>
+              <th>PostgreSQL counterpart</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Crash after COMMIT WAL, before heap apply</td>
+              <td>Committed rows missing in data file</td>
+              <td>Startup WAL replay by xid</td>
+              <td>Crash recovery redo from WAL</td>
+            </tr>
+            <tr>
+              <td>Version bloat from frequent updates</td>
+              <td>Reads become slower, files grow</td>
+              <td>Manual <code>VACUUM</code> command</td>
+              <td>Autovacuum + visibility map</td>
+            </tr>
+            <tr>
+              <td>Long-running write burst with indexes</td>
+              <td>Higher commit latency</td>
+              <td>Index rebuild on touched tables</td>
+              <td>Per-index maintenance, HOT optimizations</td>
+            </tr>
+            <tr>
+              <td>Type mismatch in writes/filters</td>
+              <td>Incorrect comparisons or silent coercion bugs</td>
+              <td>Strict coercion by schema type</td>
+              <td>Type system + casts + planner checks</td>
+            </tr>
+            <tr>
+              <td>No multi-process lock manager</td>
+              <td>Cannot model deadlocks</td>
+              <td>Single-process execution assumption</td>
+              <td>Lock table + deadlock detector</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Trade-offs</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Design choice</th>
+              <th>Benefit</th>
+              <th>Cost</th>
+              <th>When to evolve</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>JSONL heap versions</td>
+              <td>Readable, inspectable storage</td>
+              <td>No page cache realism</td>
+              <td>Switch to fixed-size pages and buffer pool</td>
+            </tr>
+            <tr>
+              <td>Logical WAL records</td>
+              <td>Easy replay semantics</td>
+              <td>No physical page delta optimization</td>
+              <td>Add page-level WAL for realism</td>
+            </tr>
+            <tr>
+              <td>Rule-based planner</td>
+              <td>Deterministic and understandable</td>
+              <td>Poor adaptability to skewed data</td>
+              <td>Add statistics and cost model</td>
+            </tr>
+            <tr>
+              <td>Manual vacuum</td>
+              <td>Simple control flow</td>
+              <td>Operational burden and latency spikes</td>
+              <td>Add background maintenance worker</td>
+            </tr>
+            <tr>
+              <td>Single-column indexes</td>
+              <td>Fast implementation, clear teaching value</td>
+              <td>No range optimization or composite keys</td>
+              <td>Add B-tree pages and multi-column keys</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Real-world usage</h2>
+        <p>
+          Use this implementation as a learning scaffold for core database internals, then map each layer to production PostgreSQL behavior.
+          For consistency and transaction models across distributed systems, also review
+          <a href="consistency-models.html">consistency models</a>,
+          <a href="distributed-transactions.html">distributed transactions</a>, and
+          <a href="operating-systems.html">operating systems fundamentals</a>.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Concept in this project</th>
+              <th>Production PostgreSQL analogue</th>
+              <th>Operational relevance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>xmin/xmax</code> visibility checks</td>
+              <td>MVCC tuple visibility and snapshots</td>
+              <td>Explains stale-row cleanup and vacuum cost</td>
+            </tr>
+            <tr>
+              <td>BEGIN/OP/COMMIT WAL records</td>
+              <td>WAL segments, checkpoints, crash recovery</td>
+              <td>Explains durability and recovery-time objectives</td>
+            </tr>
+            <tr>
+              <td>Index scan vs seq scan choice</td>
+              <td>Cost-based optimizer plan selection</td>
+              <td>Explains why indexes can still be ignored</td>
+            </tr>
+            <tr>
+              <td>TUI runtime status</td>
+              <td><code>pg_stat_*</code> views and EXPLAIN output</td>
+              <td>Builds intuition for observability-first operations</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div>Built for senior engineers and system designers.</div>
+      <div>Distributed Systems Visual Guide.</div>
+    </footer>
+  </body>
+</html>
