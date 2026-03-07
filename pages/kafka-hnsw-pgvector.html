@@ -1,0 +1,2816 @@
+<!doctype html>
+<html lang="en" data-color-mode="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kafka, HNSW, and pgvector | Distributed Systems Visual Guide</title>
+    <link rel="stylesheet" href="../assets/css/theme.css" />
+    <script defer src="../assets/js/toggleTheme.js"></script>
+    <script defer src="../assets/js/site.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script defer src="../assets/js/mermaid-init.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+    <style>
+      .retrieval-main {
+        display: grid;
+        gap: 2rem;
+      }
+
+      .retrieval-hero,
+      .learning-strip,
+      .concept-shell,
+      .system-breakdown,
+      .component-section,
+      .lab,
+      .story-card,
+      .failure-grid article {
+        border: 1px solid var(--border-light);
+        border-radius: calc(var(--radius) + 4px);
+        background: var(--bg-secondary);
+        box-shadow: var(--shadow-lg);
+      }
+
+      .retrieval-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+        gap: 1.5rem;
+        padding: 2rem;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .retrieval-hero::before,
+      .retrieval-hero::after {
+        content: "";
+        position: absolute;
+        inset: auto;
+        width: 18rem;
+        height: 18rem;
+        border-radius: 999px;
+        pointer-events: none;
+      }
+
+      .retrieval-hero::before {
+        top: -6rem;
+        right: -6rem;
+        background: radial-gradient(circle, var(--accent-primary), transparent 70%);
+        opacity: 0.15;
+      }
+
+      .retrieval-hero::after {
+        bottom: -7rem;
+        left: -5rem;
+        background: radial-gradient(circle, var(--status-good), transparent 72%);
+        opacity: 0.12;
+      }
+
+      .retrieval-copy,
+      .structure-board {
+        position: relative;
+        z-index: 1;
+      }
+
+      .kicker,
+      .lab-label,
+      .story-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0 0 1rem;
+        padding: 0.45rem 0.8rem;
+        border-radius: 999px;
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-secondary);
+      }
+
+      .kicker::before,
+      .lab-label::before,
+      .story-label::before {
+        content: "";
+        width: 0.6rem;
+        height: 0.6rem;
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--accent-primary), var(--status-good));
+      }
+
+      .retrieval-hero h1 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+        max-width: 12ch;
+        font-size: clamp(2.9rem, 5.6vw, 4.8rem);
+        line-height: 0.98;
+      }
+
+      .retrieval-hero p {
+        max-width: 64ch;
+      }
+
+      .retrieval-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 1.75rem;
+      }
+
+      .retrieval-actions a {
+        text-decoration: none;
+      }
+
+      .hero-link-muted {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.8rem 1.3rem;
+        border-radius: 999px;
+        border: 1px solid var(--border-medium);
+        background: var(--glass-bg);
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+
+      .hero-points {
+        display: grid;
+        gap: 0.85rem;
+        margin-top: 1.75rem;
+      }
+
+      .hero-point {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.75rem;
+        align-items: start;
+        padding: 0.9rem 1rem;
+        border-radius: var(--radius-sm);
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+      }
+
+      .hero-point strong {
+        color: var(--text-primary);
+      }
+
+      .hero-point-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 2.2rem;
+        height: 2.2rem;
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--accent-primary), var(--status-good));
+        color: var(--bg-primary);
+        font-family: var(--font-mono);
+        font-size: 0.85rem;
+        font-weight: 700;
+      }
+
+      .structure-board {
+        display: grid;
+        gap: 1rem;
+        align-content: center;
+      }
+
+      .structure-card {
+        display: grid;
+        gap: 0.9rem;
+        padding: 1.15rem;
+        border-radius: var(--radius);
+        background:
+          linear-gradient(180deg, var(--bg-secondary), var(--glass-bg));
+        border: 1px solid var(--border-light);
+        box-shadow: var(--shadow-md);
+      }
+
+      .structure-card h2,
+      .structure-card h3 {
+        margin: 0;
+      }
+
+      .structure-card h3 {
+        font-size: 1.15rem;
+      }
+
+      .structure-card p {
+        margin: 0;
+        font-size: 0.95rem;
+      }
+
+      .mini-log,
+      .mini-graph,
+      .mini-sql {
+        display: grid;
+        gap: 0.55rem;
+      }
+
+      .mini-log-row,
+      .mini-sql-row {
+        display: grid;
+        align-items: center;
+      }
+
+      .mini-log-row {
+        grid-template-columns: 2.2rem repeat(6, minmax(0, 1fr));
+        gap: 0.35rem;
+      }
+
+      .mini-log-row span,
+      .mini-sql-pill,
+      .mini-sql-row span {
+        font-family: var(--font-mono);
+        font-size: 0.74rem;
+        color: var(--text-secondary);
+      }
+
+      .mini-log-slot,
+      .mini-sql-chip,
+      .mini-graph-node {
+        border-radius: 999px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-light);
+      }
+
+      .mini-log-slot {
+        height: 0.8rem;
+      }
+
+      .mini-log-slot.is-hot,
+      .mini-sql-chip.is-hot {
+        background: linear-gradient(135deg, var(--accent-primary), var(--status-good));
+      }
+
+      .mini-graph {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        align-items: center;
+      }
+
+      .mini-graph-node {
+        width: 1.3rem;
+        height: 1.3rem;
+        justify-self: center;
+      }
+
+      .mini-graph-line {
+        height: 0.2rem;
+        background: linear-gradient(90deg, var(--accent-secondary), var(--accent-primary));
+        border-radius: 999px;
+      }
+
+      .mini-sql-row {
+        grid-template-columns: 4.2rem 1fr auto;
+        gap: 0.55rem;
+      }
+
+      .mini-sql-chip {
+        height: 0.7rem;
+      }
+
+      .mini-sql-pill {
+        display: inline-flex;
+        justify-self: end;
+        padding: 0.2rem 0.5rem;
+        border-radius: 999px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-light);
+      }
+
+      .learning-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        padding: 1rem 1.15rem;
+        position: sticky;
+        top: 5.6rem;
+        z-index: 50;
+        backdrop-filter: blur(14px);
+      }
+
+      .learning-strip a {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.75rem 1rem;
+        border-radius: 999px;
+        text-decoration: none;
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+
+      .learning-strip a::before {
+        content: "";
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--accent-primary), var(--status-good));
+      }
+
+      .concept-shell {
+        padding: 1.5rem;
+      }
+
+      .system-breakdown,
+      .component-section {
+        padding: 1.5rem;
+        display: grid;
+        gap: 1.5rem;
+        align-content: start;
+        min-height: 78vh;
+      }
+
+      .concept-shell h2,
+      .system-breakdown h2,
+      .component-section h2 {
+        margin-top: 0;
+      }
+
+      .story-grid,
+      .failure-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+
+      .story-card,
+      .failure-grid article {
+        padding: 1.15rem;
+      }
+
+      .story-card h3,
+      .failure-grid h3 {
+        margin-top: 0;
+      }
+
+      .story-card p,
+      .failure-grid p {
+        margin-bottom: 0;
+      }
+
+      .breakdown-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        margin: 1.25rem 0 1.5rem;
+      }
+
+      .breakdown-stage,
+      .diagram-card,
+      .component-summary-card {
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius);
+        background:
+          linear-gradient(180deg, var(--bg-secondary), var(--glass-bg));
+        box-shadow: var(--shadow-md);
+      }
+
+      .breakdown-stage,
+      .component-summary-card {
+        padding: 1rem;
+      }
+
+      .breakdown-stage h3,
+      .component-summary-card h3 {
+        margin-top: 0;
+      }
+
+      .breakdown-stage p,
+      .component-summary-card p {
+        margin-bottom: 0;
+      }
+
+      .diagram-grid {
+        display: grid;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        gap: 1rem;
+        margin-top: 1.25rem;
+      }
+
+      .diagram-card {
+        grid-column: span 6;
+        padding: 1.15rem;
+        position: relative;
+        overflow: hidden;
+        --diagram-accent: var(--accent-primary);
+        --diagram-accent-2: var(--status-good);
+        background:
+          radial-gradient(circle at 110% -10%, color-mix(in srgb, var(--diagram-accent) 18%, transparent), transparent 42%),
+          linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--diagram-accent) 7%, var(--bg-secondary)),
+            color-mix(in srgb, var(--diagram-accent-2) 8%, var(--bg-tertiary))
+          );
+        border-color: color-mix(in srgb, var(--diagram-accent) 26%, var(--border-light));
+      }
+
+      .diagram-card.is-wide {
+        grid-column: 1 / -1;
+      }
+
+      .diagram-card::before {
+        content: "";
+        position: absolute;
+        inset: 0 0 auto 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--diagram-accent), var(--diagram-accent-2));
+      }
+
+      .diagram-card.is-system {
+        --diagram-accent: var(--accent-primary);
+        --diagram-accent-2: var(--status-good);
+      }
+
+      .diagram-card.is-write,
+      .diagram-card.is-kafka {
+        --diagram-accent: var(--status-warn);
+        --diagram-accent-2: var(--accent-tertiary);
+      }
+
+      .diagram-card.is-read,
+      .diagram-card.is-pgvector {
+        --diagram-accent: var(--accent-primary);
+        --diagram-accent-2: var(--accent-secondary);
+      }
+
+      .diagram-card.is-hnsw {
+        --diagram-accent: var(--accent-secondary);
+        --diagram-accent-2: var(--status-good);
+      }
+
+      .diagram-card h3 {
+        margin-top: 0;
+      }
+
+      .diagram-card p {
+        margin-bottom: 0;
+      }
+
+      .diagram-card pre {
+        margin: 1rem 0 0;
+        padding: 1rem;
+        background:
+          radial-gradient(circle at top right, color-mix(in srgb, var(--diagram-accent) 18%, transparent), transparent 36%),
+          linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--diagram-accent) 16%, var(--bg-tertiary)),
+            color-mix(in srgb, var(--diagram-accent-2) 12%, var(--bg-primary))
+          );
+        border: 1px solid color-mix(in srgb, var(--diagram-accent) 34%, var(--border-light));
+        box-shadow:
+          inset 0 1px 0 color-mix(in srgb, var(--diagram-accent) 12%, var(--bg-secondary)),
+          inset 0 -24px 40px color-mix(in srgb, var(--diagram-accent-2) 8%, transparent);
+      }
+
+      .diagram-card pre.mermaid {
+        color: var(--text-primary);
+      }
+
+      .diagram-card pre.mermaid svg {
+        width: 100%;
+        height: auto;
+      }
+
+      .diagram-card pre.mermaid .cluster rect {
+        fill: color-mix(in srgb, var(--diagram-accent) 18%, var(--bg-secondary)) !important;
+        stroke: color-mix(in srgb, var(--diagram-accent) 68%, var(--border-medium)) !important;
+        stroke-width: 1.8px !important;
+      }
+
+      .diagram-card pre.mermaid .node rect,
+      .diagram-card pre.mermaid .node circle,
+      .diagram-card pre.mermaid .node polygon,
+      .diagram-card pre.mermaid .node path,
+      .diagram-card pre.mermaid .actor,
+      .diagram-card pre.mermaid .note,
+      .diagram-card pre.mermaid .labelBox {
+        fill: color-mix(in srgb, var(--diagram-accent) 24%, var(--bg-secondary)) !important;
+        stroke: color-mix(in srgb, var(--diagram-accent) 86%, var(--border-medium)) !important;
+        stroke-width: 1.8px !important;
+      }
+
+      .diagram-card pre.mermaid .actor-line,
+      .diagram-card pre.mermaid .messageLine0,
+      .diagram-card pre.mermaid .messageLine1,
+      .diagram-card pre.mermaid .flowchart-link,
+      .diagram-card pre.mermaid .edgePath .path,
+      .diagram-card pre.mermaid line {
+        stroke: color-mix(in srgb, var(--diagram-accent) 72%, var(--text-tertiary)) !important;
+        stroke-width: 2.2px !important;
+      }
+
+      .diagram-card pre.mermaid .arrowheadPath,
+      .diagram-card pre.mermaid marker path {
+        fill: var(--diagram-accent) !important;
+        stroke: var(--diagram-accent) !important;
+      }
+
+      .diagram-card pre.mermaid .edgeLabel rect,
+      .diagram-card pre.mermaid .labelBkg {
+        fill: color-mix(in srgb, var(--diagram-accent) 16%, var(--bg-secondary)) !important;
+        stroke: color-mix(in srgb, var(--diagram-accent) 42%, var(--border-light)) !important;
+      }
+
+      .diagram-card pre.mermaid text,
+      .diagram-card pre.mermaid tspan,
+      .diagram-card pre.mermaid foreignObject,
+      .diagram-card pre.mermaid .messageText,
+      .diagram-card pre.mermaid .noteText,
+      .diagram-card pre.mermaid .label,
+      .diagram-card pre.mermaid .cluster-label {
+        fill: var(--text-primary) !important;
+        color: var(--text-primary) !important;
+        font-family: var(--font-mono) !important;
+        font-size: 13px !important;
+      }
+
+      .diagram-card pre.mermaid foreignObject div,
+      .diagram-card pre.mermaid foreignObject span,
+      .diagram-card pre.mermaid .nodeLabel,
+      .diagram-card pre.mermaid .edgeLabel {
+        color: var(--text-primary) !important;
+        font-family: var(--font-mono) !important;
+      }
+
+      .diagram-card pre.mermaid .cluster-label text,
+      .diagram-card pre.mermaid .edgeLabel text {
+        font-weight: 700 !important;
+      }
+
+      .diagram-card pre.mermaid .divider,
+      .diagram-card pre.mermaid .activation0,
+      .diagram-card pre.mermaid .activation1,
+      .diagram-card pre.mermaid .activation2 {
+        fill: color-mix(in srgb, var(--diagram-accent) 26%, var(--bg-secondary)) !important;
+        stroke: color-mix(in srgb, var(--diagram-accent) 50%, var(--border-medium)) !important;
+      }
+
+      .diagram-card pre.mermaid .cluster-label rect {
+        fill: color-mix(in srgb, var(--diagram-accent) 16%, var(--bg-secondary)) !important;
+        stroke: none !important;
+      }
+
+      .diagram-card pre.mermaid .cluster-label text,
+      .diagram-card pre.mermaid .cluster text {
+        fill: var(--text-primary) !important;
+      }
+
+      .component-lede,
+      .component-layout {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .component-lede {
+        grid-template-columns: minmax(0, 1.18fr) minmax(260px, 0.82fr);
+        align-items: start;
+      }
+
+      .component-layout {
+        grid-template-columns: minmax(0, 1.08fr) minmax(260px, 0.92fr);
+        align-items: start;
+        margin-top: 1.2rem;
+      }
+
+      .component-summary-card {
+        display: grid;
+        gap: 0.85rem;
+      }
+
+      .section-banner {
+        display: grid;
+        gap: 0.6rem;
+        padding: 1.15rem 1.2rem;
+        border-radius: calc(var(--radius) + 4px);
+        border: 1px solid var(--glass-border);
+        background:
+          linear-gradient(135deg, var(--glass-bg), var(--bg-tertiary));
+        box-shadow: var(--shadow-md);
+      }
+
+      #architecture {
+        background:
+          radial-gradient(circle at top right, color-mix(in srgb, var(--accent-primary) 14%, transparent), transparent 32%),
+          linear-gradient(180deg, color-mix(in srgb, var(--accent-primary) 5%, var(--bg-secondary)), var(--bg-secondary));
+      }
+
+      #architecture .section-banner {
+        background:
+          linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--accent-primary) 12%, var(--glass-bg)),
+            color-mix(in srgb, var(--status-good) 10%, var(--bg-tertiary))
+          );
+        border-color: color-mix(in srgb, var(--accent-primary) 20%, var(--glass-border));
+      }
+
+      .section-tag {
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        padding: 0.25rem 0.7rem;
+        border-radius: 999px;
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        font-family: var(--font-mono);
+        font-size: 0.74rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-primary);
+      }
+
+      .section-flow {
+        display: inline-flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        width: fit-content;
+        padding: 0.4rem 0.75rem;
+        border-radius: 999px;
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--accent-secondary);
+      }
+
+      .component-summary-card strong {
+        display: block;
+        margin-bottom: 0.25rem;
+        color: var(--text-primary);
+      }
+
+      .component-section .lab {
+        margin-top: 0;
+      }
+
+      .lab {
+        padding: 1.4rem;
+        margin-top: 1.5rem;
+      }
+
+      .lab h3 {
+        margin-top: 0;
+      }
+
+      .lab-intro {
+        margin-bottom: 1rem;
+      }
+
+      .lab-frame {
+        display: grid;
+        grid-template-columns: minmax(280px, 0.82fr) minmax(0, 1.18fr);
+        gap: 1rem;
+        margin: 1.2rem 0 1.25rem;
+      }
+
+      .lab-panel,
+      .lab-canvas {
+        border-radius: var(--radius);
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-light);
+      }
+
+      .lab-panel {
+        display: grid;
+        gap: 0.85rem;
+        align-content: start;
+        padding: 1rem;
+      }
+
+      .lab-stepper {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+        align-items: center;
+      }
+
+      .lab-stepper button {
+        border: 1px solid var(--border-medium);
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        padding: 0.55rem 0.85rem;
+        border-radius: 999px;
+        cursor: pointer;
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+      }
+
+      .lab-stepper button:hover {
+        border-color: var(--accent-primary);
+        transform: translateY(-1px);
+      }
+
+      .lab-step-count {
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        color: var(--text-tertiary);
+      }
+
+      .lab-step-title {
+        margin: 0;
+        font-size: 1.12rem;
+        color: var(--text-primary);
+      }
+
+      .lab-step-note {
+        margin: 0;
+      }
+
+      .lab-facts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+      }
+
+      .lab-facts span {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.45rem 0.65rem;
+        border-radius: 999px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-light);
+        font-family: var(--font-mono);
+        font-size: 0.76rem;
+        color: var(--text-secondary);
+      }
+
+      .lab-canvas {
+        padding: 0.75rem;
+        min-height: 22rem;
+      }
+
+      .lab-canvas svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .lab ol {
+        margin-bottom: 0;
+      }
+
+      .lab ol li + li {
+        margin-top: 0.5rem;
+      }
+
+      .system-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+        margin-top: 1rem;
+      }
+
+      .system-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.55rem 0.8rem;
+        border-radius: 999px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-light);
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+      }
+
+      .system-chip::before {
+        content: "";
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--accent-primary), var(--status-good));
+      }
+
+      .kafka-lane {
+        fill: var(--bg-secondary);
+        stroke: var(--border-medium);
+        stroke-width: 2px;
+      }
+
+      .kafka-lane.is-focused {
+        stroke: var(--accent-primary);
+      }
+
+      .kafka-slot {
+        fill: var(--bg-tertiary);
+        stroke: var(--border-light);
+        stroke-width: 1.5px;
+      }
+
+      .kafka-slot.is-active {
+        fill: url(#kafkaActiveFill);
+        stroke: var(--accent-primary);
+      }
+
+      .kafka-slot.is-faded {
+        opacity: 0.45;
+      }
+
+      .kafka-segment {
+        fill: var(--glass-bg);
+        stroke: var(--border-light);
+        stroke-width: 1px;
+      }
+
+      .kafka-label,
+      .kafka-offset,
+      .kafka-caption,
+      .hnsw-label,
+      .hnsw-metric,
+      .pg-label,
+      .pg-row-label {
+        fill: var(--text-primary);
+        font-family: var(--font-mono);
+      }
+
+      .kafka-offset,
+      .kafka-caption,
+      .hnsw-metric,
+      .pg-row-label {
+        fill: var(--text-secondary);
+      }
+
+      .kafka-label {
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .kafka-offset,
+      .kafka-caption,
+      .hnsw-metric,
+      .pg-row-label {
+        font-size: 12px;
+      }
+
+      .kafka-arrow,
+      .kafka-cursor-line,
+      .hnsw-edge,
+      .pg-link {
+        fill: none;
+        stroke: var(--text-tertiary);
+        stroke-width: 2px;
+      }
+
+      .kafka-arrow.is-active,
+      .kafka-cursor-line.is-active,
+      .hnsw-edge.is-active,
+      .pg-link.is-active {
+        stroke: var(--accent-primary);
+      }
+
+      .kafka-arrow.is-replay,
+      .kafka-cursor-line.is-replay,
+      .pg-link.is-filter {
+        stroke: var(--status-warn);
+      }
+
+      .kafka-badge,
+      .pg-pill {
+        fill: var(--bg-secondary);
+        stroke: var(--border-medium);
+        stroke-width: 1.5px;
+      }
+
+      .kafka-badge.is-active,
+      .pg-pill.is-active {
+        fill: var(--status-good);
+        stroke: var(--status-good);
+      }
+
+      .hnsw-node {
+        fill: var(--bg-secondary);
+        stroke: var(--border-medium);
+        stroke-width: 2px;
+      }
+
+      .hnsw-node.is-entry {
+        stroke: var(--accent-secondary);
+      }
+
+      .hnsw-node.is-active {
+        fill: var(--accent-primary);
+        stroke: var(--accent-primary);
+      }
+
+      .hnsw-node.is-candidate {
+        fill: var(--status-good);
+        stroke: var(--status-good);
+      }
+
+      .hnsw-node.is-result {
+        fill: var(--status-warn);
+        stroke: var(--status-warn);
+      }
+
+      .hnsw-query {
+        fill: var(--accent-tertiary);
+        stroke: var(--accent-tertiary);
+      }
+
+      .hnsw-layer-band {
+        fill: var(--glass-bg);
+        stroke: var(--border-light);
+        stroke-width: 1px;
+      }
+
+      .hnsw-path {
+        fill: none;
+        stroke: var(--accent-primary);
+        stroke-width: 3px;
+        stroke-dasharray: 8 5;
+      }
+
+      .pg-box {
+        fill: var(--bg-secondary);
+        stroke: var(--border-medium);
+        stroke-width: 2px;
+      }
+
+      .pg-box.is-active {
+        stroke: var(--accent-primary);
+      }
+
+      .pg-box.is-filtered {
+        stroke: var(--status-warn);
+      }
+
+      .pg-row {
+        fill: var(--bg-tertiary);
+        stroke: var(--border-light);
+        stroke-width: 1px;
+      }
+
+      .pg-row.is-candidate {
+        fill: var(--status-good);
+        stroke: var(--status-good);
+      }
+
+      .pg-row.is-filtered {
+        fill: var(--glass-bg);
+        opacity: 0.55;
+      }
+
+      .pg-row.is-result {
+        fill: var(--accent-primary);
+        stroke: var(--accent-primary);
+      }
+
+      @media (max-width: 920px) {
+        .retrieval-hero,
+        .component-lede,
+        .component-layout,
+        .lab-frame {
+          grid-template-columns: 1fr;
+        }
+
+        .diagram-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .diagram-card,
+        .diagram-card.is-wide {
+          grid-column: auto;
+        }
+
+        .retrieval-hero h1 {
+          max-width: none;
+        }
+
+        .learning-strip {
+          top: 0.75rem;
+        }
+
+        .concept-shell,
+        .system-breakdown,
+        .component-section {
+          min-height: auto;
+        }
+
+        .lab-canvas {
+          min-height: 18rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-brand">
+        <a href="../index.html">Distributed Systems Visual Guide</a>
+      </div>
+      <nav class="site-nav">
+        <a href="../index.html">Home</a>
+        <a href="distributed-algorithms.html">Algorithms</a>
+        <a href="database-architectures.html">Storage</a>
+        <a href="database-patterns.html">Databases</a>
+        <a href="kafka-hnsw-pgvector.html" class="is-active" aria-current="page">Vector Retrieval</a>
+        <a href="postgres-from-scratch-python-tui.html">Postgres in Python</a>
+        <a href="distributed-transactions.html">Transactions</a>
+        <a href="consistency-models.html">Consistency</a>
+        <a href="networking-patterns.html">Networking</a>
+        <a href="kubernetes-patterns.html">Kubernetes</a>
+        <a href="operating-systems.html">Operating Systems</a>
+      </nav>
+      <button class="theme-toggle" type="button" onclick="toggleColorMode()">Toggle theme</button>
+    </header>
+
+    <main class="retrieval-main">
+      <section class="retrieval-hero">
+        <div class="retrieval-copy">
+          <p class="kicker">Vector Retrieval Systems</p>
+          <h1>Kafka, HNSW, and pgvector: three data structures, one usable retrieval stack.</h1>
+          <p>
+            Kafka holds the history, HNSW prunes the search space, and pgvector keeps similarity search close to
+            relational filters. This page turns those pieces into an explicit mental model you can step through.
+          </p>
+          <p>
+            It complements the broader <a href="database-patterns.html">database patterns</a> page and the algorithm
+            references on <a href="distributed-algorithms.html">distributed algorithms</a> by showing how the pieces
+            cooperate in one real query path.
+          </p>
+          <div class="retrieval-actions">
+            <a class="hero-link" href="#system-breakdown">Start the system breakdown</a>
+            <a class="hero-link-muted" href="#trade-offs">Jump to tuning trade-offs</a>
+          </div>
+          <div class="hero-points">
+            <div class="hero-point">
+              <div class="hero-point-badge">1</div>
+              <div>
+                <strong>Kafka answers:</strong> how do new embeddings arrive, stay ordered per key, and replay for
+                reindexing?
+              </div>
+            </div>
+            <div class="hero-point">
+              <div class="hero-point-badge">2</div>
+              <div>
+                <strong>HNSW answers:</strong> how do we avoid comparing the query against every vector?
+              </div>
+            </div>
+            <div class="hero-point">
+              <div class="hero-point-badge">3</div>
+              <div>
+                <strong>pgvector answers:</strong> how do similarity search, filters, joins, and operational Postgres
+                reality stay in one system?
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="structure-board" aria-label="Three structure preview cards">
+          <article class="structure-card">
+            <h3>Kafka: partitioned log</h3>
+            <p>Offsets are stable addresses. Consumers move their own cursors. Replay is a normal operation.</p>
+            <div class="mini-log" aria-hidden="true">
+              <div class="mini-log-row">
+                <span>P0</span>
+                <div class="mini-log-slot"></div>
+                <div class="mini-log-slot"></div>
+                <div class="mini-log-slot"></div>
+                <div class="mini-log-slot"></div>
+                <div class="mini-log-slot"></div>
+                <div class="mini-log-slot"></div>
+              </div>
+              <div class="mini-log-row">
+                <span>P1</span>
+                <div class="mini-log-slot"></div>
+                <div class="mini-log-slot"></div>
+                <div class="mini-log-slot is-hot"></div>
+                <div class="mini-log-slot is-hot"></div>
+                <div class="mini-log-slot"></div>
+                <div class="mini-log-slot"></div>
+              </div>
+              <div class="mini-log-row">
+                <span>P2</span>
+                <div class="mini-log-slot"></div>
+                <div class="mini-log-slot"></div>
+                <div class="mini-log-slot"></div>
+                <div class="mini-log-slot"></div>
+                <div class="mini-log-slot"></div>
+                <div class="mini-log-slot"></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="structure-card">
+            <h3>HNSW: layered graph</h3>
+            <p>Upper layers route quickly. The base layer refines with a wider candidate frontier.</p>
+            <div class="mini-graph" aria-hidden="true">
+              <div class="mini-graph-node"></div>
+              <div class="mini-graph-line"></div>
+              <div class="mini-graph-node"></div>
+              <div class="mini-graph-line"></div>
+              <div class="mini-graph-node"></div>
+              <div></div>
+              <div></div>
+              <div class="mini-graph-node"></div>
+              <div class="mini-graph-line"></div>
+              <div class="mini-graph-node"></div>
+              <div class="mini-graph-line"></div>
+              <div class="mini-graph-node"></div>
+            </div>
+          </article>
+
+          <article class="structure-card">
+            <h3>pgvector: SQL plus ANN</h3>
+            <p>The index finds candidates. PostgreSQL still owns filtering, joins, and result shaping.</p>
+            <div class="mini-sql" aria-hidden="true">
+              <div class="mini-sql-row">
+                <span>doc_17</span>
+                <div class="mini-sql-chip is-hot"></div>
+                <span class="mini-sql-pill">tenant=42</span>
+              </div>
+              <div class="mini-sql-row">
+                <span>doc_05</span>
+                <div class="mini-sql-chip"></div>
+                <span class="mini-sql-pill">tenant=17</span>
+              </div>
+              <div class="mini-sql-row">
+                <span>doc_31</span>
+                <div class="mini-sql-chip is-hot"></div>
+                <span class="mini-sql-pill">tenant=42</span>
+              </div>
+            </div>
+          </article>
+        </aside>
+      </section>
+
+      <section class="learning-strip">
+        <a href="#system-breakdown">System breakdown</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#step-through-lab">Kafka</a>
+        <a href="#hnsw-section">HNSW</a>
+        <a href="#pgvector-section">pgvector</a>
+        <a href="#trade-offs">Tuning trade-offs</a>
+      </section>
+
+      <section class="concept-shell">
+        <h2>Problem framing</h2>
+        <p>
+          Semantic retrieval systems fail when teams blur three different jobs into one buzzword. Ingest needs durable
+          replay, nearest-neighbor search needs aggressive pruning, and application serving still needs filters, joins,
+          access control, and operational recovery. Those are different problems, so production systems usually use
+          different data structures for each one.
+        </p>
+        <p>
+          The practical risk is predictable: a team uses Kafka like a work queue, HNSW like an exact index, or
+          pgvector like a fully separate search engine. The result is replay pain, poor recall, or SQL plans that do
+          not match product expectations.
+        </p>
+      </section>
+
+      <section>
+        <h2>Core idea / pattern</h2>
+        <h3>Three structures, three jobs</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Structure</th>
+              <th>Problem</th>
+              <th>Pattern</th>
+              <th>Trade-offs</th>
+              <th>Failure modes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Kafka partitioned log</td>
+              <td>Embeddings and document updates must arrive durably, stay ordered per key, and replay later.</td>
+              <td>Append-only partitions with monotonically increasing offsets and consumer-managed cursors.</td>
+              <td>High-throughput replay and fan-out vs partition-hotspot risk and offset-management complexity.</td>
+              <td>Hot partitions, lag growth, non-idempotent replay, and retention windows that are too short for rebuilds.</td>
+            </tr>
+            <tr>
+              <td>HNSW graph</td>
+              <td>Exact kNN over a large vector set is too slow or too expensive.</td>
+              <td>Hierarchical graph with sparse shortcut layers above a dense base layer.</td>
+              <td>High recall with low latency vs memory-heavy indexes and approximation error under poor tuning.</td>
+              <td>Low <code>ef_search</code>, weak graph connectivity, and candidate pools that collapse after filters.</td>
+            </tr>
+            <tr>
+              <td>pgvector in PostgreSQL</td>
+              <td>Similarity search must stay close to tenant filters, joins, freshness rules, and operational Postgres tooling.</td>
+              <td>Vector column, distance operators, and exact or ANN index paths inside normal relational tables.</td>
+              <td>One operational surface and strong SQL composition vs less specialization than a dedicated vector serving tier.</td>
+              <td>Poor filter selectivity after ANN search, memory-heavy indexes, and neglected vacuum or reindex maintenance.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="system-chip-row">
+          <div class="system-chip">Kafka keeps event history replayable.</div>
+          <div class="system-chip">HNSW prunes the candidate set before distance work explodes.</div>
+          <div class="system-chip">pgvector keeps metadata-aware ranking inside SQL.</div>
+        </div>
+      </section>
+
+      <section id="system-breakdown" class="system-breakdown">
+        <div class="section-banner">
+          <span class="section-tag">System Breakdown</span>
+          <h2>One retrieval request crosses four cooperating planes.</h2>
+          <p>
+            The stack gets easier to learn when you treat it like a staged instrument panel: ingest, persist, search,
+            and rebuild are separate surfaces with different rules.
+          </p>
+          <div class="section-flow">ingest -> store -> search -> filter -> rank -> replay</div>
+        </div>
+
+        <div class="breakdown-grid">
+          <article class="breakdown-stage">
+            <h3>Ingest plane</h3>
+            <p>
+              Kafka receives document or CDC updates, keeps order per key, and exposes replayable history for workers.
+            </p>
+          </article>
+          <article class="breakdown-stage">
+            <h3>Storage plane</h3>
+            <p>
+              PostgreSQL stores the row, metadata, and vector column together so relational state remains first-class.
+            </p>
+          </article>
+          <article class="breakdown-stage">
+            <h3>Search plane</h3>
+            <p>
+              HNSW narrows the candidate set quickly, then pgvector and SQL finish the job with real predicates.
+            </p>
+          </article>
+          <article class="breakdown-stage">
+            <h3>Recovery loop</h3>
+            <p>
+              Model refreshes and reindexing use Kafka replay to regenerate vectors without requiring upstream resend.
+            </p>
+          </article>
+        </div>
+
+        <h3>End-to-end flow</h3>
+        <ol>
+          <li>Receive a document or entity update and append it to a Kafka partition keyed by the ordered entity.</li>
+          <li>Consume the event, generate or refresh the embedding, and upsert the row into PostgreSQL.</li>
+          <li>Insert or update the vector entry inside the HNSW index attached to that table.</li>
+          <li>Encode the user query into a query vector at read time.</li>
+          <li>Use HNSW to surface a compact candidate set instead of scanning the full table.</li>
+          <li>Apply SQL filters, fetch metadata, and rerank the survivors into the final top-k result set.</li>
+          <li>Reset consumer offsets later if a model change or index rebuild requires replaying the same durable history.</li>
+        </ol>
+      </section>
+
+      <section id="architecture" class="concept-shell">
+        <div class="section-banner">
+          <span class="section-tag">Architecture</span>
+          <h2>Architecture diagram</h2>
+          <p>
+            The main system map shows the whole stack. The companion diagrams split write and read paths apart so the
+            visual logic stays clean instead of collapsing into one overloaded picture.
+          </p>
+          <div class="section-flow">system map | write path | read path</div>
+        </div>
+
+        <div class="diagram-grid">
+          <article class="diagram-card is-wide is-system">
+            <p class="story-label">System Map</p>
+            <h3>Ingest, search, and rebuild are different planes.</h3>
+            <pre class="mermaid">
+flowchart TB
+  subgraph Ingest["1. Ingest plane"]
+    Source[Producer / CDC] --> Topic[Kafka topic]
+    Topic --> Worker[Embedding worker]
+  end
+
+  subgraph Storage["2. Storage plane"]
+    Table[(Postgres row<br/>metadata + vector)]
+    Index[HNSW index]
+    Worker --> Table
+    Table --> Index
+  end
+
+  subgraph Query["3. Read plane"]
+    User[User query] --> Model[Embedding model]
+    Model --> SQL[pgvector SQL query]
+    SQL --> Index
+    Index --> Candidates[Candidate row ids]
+    SQL --> Table
+    Table --> Filters[SQL filters<br/>tenant + ACL + freshness]
+    Candidates --> Filters
+    Filters --> Rank[Rerank + top-k]
+    Rank --> Client[Application response]
+  end
+
+  subgraph Rebuild["4. Recovery loop"]
+    Topic -. replay .-> Replay[Replay worker]
+    Replay --> Refresh[Model refresh / reindex]
+    Refresh --> Table
+  end
+            </pre>
+          </article>
+
+          <article class="diagram-card is-write">
+            <p class="story-label">Write Path</p>
+            <h3>Kafka owns durable history. Postgres owns row state.</h3>
+            <pre class="mermaid">
+flowchart LR
+  Update[1. keyed update] --> Append[2. append to Kafka partition]
+  Append --> Fetch[3. fetch by offset]
+  Fetch --> Embed[4. embed or refresh vector]
+  Embed --> Upsert[5. UPSERT row in Postgres]
+  Upsert --> Graph[6. update HNSW index]
+  Graph --> Commit[7. commit consumer offset]
+            </pre>
+          </article>
+
+          <article class="diagram-card is-read">
+            <p class="story-label">Read Path</p>
+            <h3>ANN finds candidates. SQL decides the answer.</h3>
+            <pre class="mermaid">
+flowchart LR
+  Query[1. user query] --> Encode[2. encode query vector]
+  Encode --> SQL[3. pgvector SQL]
+  SQL --> ANN[4. HNSW ANN search]
+  ANN --> IDs[5. candidate row ids]
+  IDs --> Heap[6. heap fetch]
+  Heap --> Filters[7. tenant / ACL / freshness]
+  Filters --> Rank[8. rerank]
+  Rank --> Output[9. top-k response]
+            </pre>
+          </article>
+        </div>
+      </section>
+
+      <section id="step-through-lab" class="component-section">
+        <div class="section-banner">
+          <span class="section-tag">Chapter 1</span>
+          <h2>Kafka: the ingest and replay layer</h2>
+          <p>
+            Kafka is the durable write history for retrieval. It gives you ordering per key, replay for rebuilds, and
+            fan-out to multiple downstream consumers without turning the broker into workflow state.
+          </p>
+          <div class="section-flow">producer -> partition -> offset -> consumer -> commit -> replay</div>
+        </div>
+
+        <div class="component-lede">
+          <div>
+            <p>
+              The important mental model is not “queue.” It is “partitioned commit log.” Records live at offsets inside
+              partitions. Consumers track progress separately, which is what makes replay and backfill routine.
+            </p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Problem</th>
+                  <th>Pattern</th>
+                  <th>Trade-offs</th>
+                  <th>Failure modes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Embeddings and document updates need durable ordered ingest plus future replay.</td>
+                  <td>Partitioned append-only log with consumer-managed offsets.</td>
+                  <td>High throughput and replayability vs local-only ordering and partition-key sensitivity.</td>
+                  <td>Hot partitions, lag buildup, duplicate side effects during replay, and retention windows too short for rebuilds.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <article class="component-summary-card">
+            <h3>What to notice</h3>
+            <p><strong>Design rule</strong> Key by the entity whose updates need ordering, not by whatever looks random.</p>
+            <p><strong>Boundary</strong> Kafka stores bytes and offsets. Your consumer decides what “processed” means.</p>
+            <p><strong>Operational truth</strong> Rebuild plans fail if retention expires before the replay can finish.</p>
+          </article>
+        </div>
+
+        <div class="component-layout">
+          <article class="diagram-card is-kafka">
+            <p class="story-label">Static Diagram</p>
+            <h3>Offsets, segments, and replay</h3>
+            <pre class="mermaid">
+flowchart LR
+  Producer[Keyed update] --> Partition[Partition P1]
+  subgraph Log["Kafka log"]
+    SegmentA[rolled segment<br/>41..43] --> SegmentB[active segment<br/>44..45]
+  end
+  Partition --> SegmentA
+  SegmentB --> Consumer[Embedding worker]
+  Consumer --> Commit[commit offset 44]
+  Commit -. reset for rebuild .-> Replay[replay from offset 41]
+  Replay -. fetch again .-> SegmentA
+            </pre>
+          </article>
+          <article class="component-summary-card">
+            <h3>Why Kafka belongs here</h3>
+            <p><strong>Problem</strong> Vector systems need a durable source of change history, not just the latest row image.</p>
+            <p><strong>Pattern</strong> Kafka preserves change order per key and lets multiple workers consume the same history differently.</p>
+            <p><strong>Trade-off</strong> Global ordering does not exist; you only get local ordering inside one partition.</p>
+            <p><strong>Failure mode</strong> Non-idempotent consumers make replay dangerous instead of helpful.</p>
+          </article>
+        </div>
+
+        <article class="lab">
+          <p class="lab-label">Interactive Lab</p>
+          <h3>Append, address by offset, replay on demand</h3>
+          <p class="lab-intro">
+            Focus on what the log stores: ordered records inside a partition, segmented over time, with consumer
+            position tracked separately from the broker’s durable bytes.
+          </p>
+          <div class="lab-frame">
+            <div class="lab-panel">
+              <div class="lab-stepper">
+                <button type="button" id="kafka-prev">Prev</button>
+                <button type="button" id="kafka-play">Play</button>
+                <button type="button" id="kafka-next">Next</button>
+                <div class="lab-step-count" id="kafka-step-count"></div>
+              </div>
+              <h3 class="lab-step-title" id="kafka-step-title"></h3>
+              <p class="lab-step-note" id="kafka-step-note"></p>
+              <div class="lab-facts" id="kafka-step-facts"></div>
+            </div>
+            <div class="lab-canvas" id="kafka-structure-viz" role="img" aria-label="Kafka partition log visualization"></div>
+          </div>
+          <ol>
+            <li>Hash the key so all updates for the same entity land on one partition and keep their local order.</li>
+            <li>Append the event to the active segment and assign the next offset. The offset becomes its stable address.</li>
+            <li>Roll segments over time so older ranges become mostly read-only while the active segment keeps growing.</li>
+            <li>Let each consumer group commit its own position after downstream work succeeds.</li>
+            <li>Reset the consumer offset when you need to rebuild embeddings or backfill a new index version.</li>
+          </ol>
+        </article>
+      </section>
+
+      <section id="hnsw-section" class="component-section">
+        <div class="section-banner">
+          <span class="section-tag">Chapter 2</span>
+          <h2>HNSW: the approximate nearest-neighbor layer</h2>
+          <p>
+            HNSW is the speed layer. It turns nearest-neighbor search from a brute-force scan into a layered graph walk
+            that gets close to the right region first and spends work locally only where it matters.
+          </p>
+          <div class="section-flow">entry point -> greedy hop -> descend -> candidate frontier -> top-k</div>
+        </div>
+
+        <div class="component-lede">
+          <div>
+            <p>
+              The graph is sparse at the top and dense at the bottom. Search starts with cheap long-range routing, then
+              broadens at the base layer so one bad local path does not trap the answer.
+            </p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Problem</th>
+                  <th>Pattern</th>
+                  <th>Trade-offs</th>
+                  <th>Failure modes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Exact nearest-neighbor search becomes too slow as the vector set grows.</td>
+                  <td>Layered navigable graph with greedy upper-layer routing and broader base-layer search.</td>
+                  <td>Low latency and strong recall vs memory-heavy indexes and approximate results.</td>
+                  <td>Low <code>ef_search</code>, poor connectivity, and post-filter candidate collapse.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <article class="component-summary-card">
+            <h3>What to notice</h3>
+            <p><strong>Design rule</strong> Upper layers are for routing; the base layer is where quality really gets decided.</p>
+            <p><strong>Primary knobs</strong> <code>M</code>, <code>ef_construction</code>, and <code>ef_search</code> control graph quality and query breadth.</p>
+            <p><strong>Operational truth</strong> A fast query with weak recall still looks healthy in dashboards unless you measure answer quality.</p>
+          </article>
+        </div>
+
+        <div class="component-layout">
+          <article class="diagram-card is-hnsw">
+            <p class="story-label">Static Diagram</p>
+            <h3>Route high, refine low</h3>
+            <pre class="mermaid">
+flowchart TB
+  Query[Query vector] --> Entry[Entry node]
+
+  subgraph L2["Sparse routing layer"]
+    Entry --> Shortcut[Long-range shortcut]
+  end
+
+  subgraph L1["Regional layer"]
+    Shortcut --> MidA[Closer region]
+    MidA --> MidB[Best-so-far node]
+  end
+
+  subgraph L0["Dense base layer"]
+    MidB --> BaseA[Candidate frontier]
+    BaseA --> BaseB[Explore nearby nodes]
+    BaseB --> Result[Top-k nearest neighbors]
+  end
+            </pre>
+          </article>
+          <article class="component-summary-card">
+            <h3>Why HNSW belongs here</h3>
+            <p><strong>Problem</strong> Most vector corpora are too large for exact search on the hot path.</p>
+            <p><strong>Pattern</strong> HNSW skips most points entirely by following graph shortcuts toward the right neighborhood.</p>
+            <p><strong>Trade-off</strong> You gain latency by accepting approximation and extra index memory.</p>
+            <p><strong>Failure mode</strong> If the base-layer search is too narrow, downstream SQL filters can wipe out the result set.</p>
+          </article>
+        </div>
+
+        <article class="lab">
+          <p class="lab-label">Interactive Lab</p>
+          <h3>Search by descending the graph, not by scanning every vector</h3>
+          <p class="lab-intro">
+            The layered graph behaves like geometric routing. Upper layers move quickly across space; the base layer
+            spends more effort around the promising region.
+          </p>
+          <div class="lab-frame">
+            <div class="lab-panel">
+              <div class="lab-stepper">
+                <button type="button" id="hnsw-prev">Prev</button>
+                <button type="button" id="hnsw-play">Play</button>
+                <button type="button" id="hnsw-next">Next</button>
+                <div class="lab-step-count" id="hnsw-step-count"></div>
+              </div>
+              <h3 class="lab-step-title" id="hnsw-step-title"></h3>
+              <p class="lab-step-note" id="hnsw-step-note"></p>
+              <div class="lab-facts" id="hnsw-step-facts"></div>
+            </div>
+            <div class="lab-canvas" id="hnsw-structure-viz" role="img" aria-label="HNSW layered graph search visualization"></div>
+          </div>
+          <ol>
+            <li>Pick an entry point at the highest populated layer.</li>
+            <li>Greedily walk to a neighbor that is closer to the query while you stay on that upper layer.</li>
+            <li>Drop one layer and continue the walk from the best node found so far.</li>
+            <li>At the base layer, maintain a wider candidate frontier so one local optimum does not trap the search.</li>
+            <li>Stop when the unexplored frontier no longer promises a better answer than the current best candidates.</li>
+            <li>Return the top-k nearest nodes seen during that base-layer exploration.</li>
+          </ol>
+        </article>
+      </section>
+
+      <section id="pgvector-section" class="component-section">
+        <div class="section-banner">
+          <span class="section-tag">Chapter 3</span>
+          <h2>pgvector: the SQL-aware serving layer</h2>
+          <p>
+            pgvector keeps vector search inside PostgreSQL so semantic similarity can stay close to tenant checks,
+            joins, freshness filters, and the operational tooling teams already know.
+          </p>
+          <div class="section-flow">query vector -> ANN candidates -> heap fetch -> SQL filters -> rerank -> top-k</div>
+        </div>
+
+        <div class="component-lede">
+          <div>
+            <p>
+              The extension matters because vector retrieval is rarely the whole query. Applications still need metadata
+              constraints, ranking rules, and row-level context that belong naturally in SQL.
+            </p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Problem</th>
+                  <th>Pattern</th>
+                  <th>Trade-offs</th>
+                  <th>Failure modes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Similarity search must remain composable with filters, joins, and standard Postgres operations.</td>
+                  <td>Vector column plus distance operators and exact or ANN index support inside PostgreSQL.</td>
+                  <td>One operational surface and strong SQL composition vs less specialization than a search-only vector tier.</td>
+                  <td>Candidate pools that shrink after filtering, memory-heavy indexes, and neglected vacuum or reindex paths.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <article class="component-summary-card">
+            <h3>What to notice</h3>
+            <p><strong>Design rule</strong> Treat ANN as candidate generation, not as the entire answer.</p>
+            <p><strong>Strength</strong> Joins, permissions, and application filters remain first-class instead of being bolted on later.</p>
+            <p><strong>Operational truth</strong> You still inherit real Postgres maintenance costs such as vacuum, index build time, and memory pressure.</p>
+          </article>
+        </div>
+
+        <div class="component-layout">
+          <article class="diagram-card is-pgvector">
+            <p class="story-label">Static Diagram</p>
+            <h3>Candidate generation meets SQL filtering</h3>
+            <pre class="mermaid">
+flowchart LR
+  Query[Query vector] --> SQL[pgvector SQL]
+  SQL --> Index[HNSW index]
+  Index --> IDs[Candidate row ids]
+  IDs --> Heap[Heap fetch]
+  Heap --> Filters[SQL filters<br/>tenant + ACL + freshness]
+  Filters --> Rank[Exact distance / business rerank]
+  Rank --> Result[Final SQL rows]
+            </pre>
+          </article>
+          <article class="component-summary-card">
+            <h3>Why pgvector belongs here</h3>
+            <p><strong>Problem</strong> The application usually needs more than pure similarity.</p>
+            <p><strong>Pattern</strong> pgvector keeps vectors inside normal tables and lets SQL shape the final answer.</p>
+            <p><strong>Trade-off</strong> You gain simplicity and composability, but not every workload wants Postgres to be the whole serving tier.</p>
+            <p><strong>Failure mode</strong> If ANN returns too few rows before filtering, the final result quality looks unstable even when the index is fine.</p>
+          </article>
+        </div>
+
+        <article class="lab" id="pgvector-lab">
+          <p class="lab-label">Interactive Lab</p>
+          <h3>Let ANN narrow the field, then let SQL decide the final rows</h3>
+          <p class="lab-intro">
+            pgvector is strongest when the answer depends on both similarity and relational predicates such as tenant,
+            ACL, freshness, or join context.
+          </p>
+          <div class="lab-frame">
+            <div class="lab-panel">
+              <div class="lab-stepper">
+                <button type="button" id="pgvector-prev">Prev</button>
+                <button type="button" id="pgvector-play">Play</button>
+                <button type="button" id="pgvector-next">Next</button>
+                <div class="lab-step-count" id="pgvector-step-count"></div>
+              </div>
+              <h3 class="lab-step-title" id="pgvector-step-title"></h3>
+              <p class="lab-step-note" id="pgvector-step-note"></p>
+              <div class="lab-facts" id="pgvector-step-facts"></div>
+              <pre><code>SELECT id, title
+FROM documents
+WHERE tenant_id = 42
+ORDER BY embedding &lt;=&gt; $1
+LIMIT 3;</code></pre>
+            </div>
+            <div class="lab-canvas" id="pgvector-structure-viz" role="img" aria-label="pgvector query flow visualization"></div>
+          </div>
+          <ol>
+            <li>Store the embedding next to normal row metadata instead of isolating it in a separate search-only table by default.</li>
+            <li>Build an ANN index such as HNSW so nearest-neighbor search does not degenerate into a full scan.</li>
+            <li>Encode the incoming query text into a query vector.</li>
+            <li>Use the ANN index to produce a candidate set of row identifiers.</li>
+            <li>Fetch the rows, apply relational filters, and optionally rerank the survivors with exact distance or business logic.</li>
+            <li>Return the final rows in normal SQL form so the rest of the application stays consistent.</li>
+          </ol>
+        </article>
+      </section>
+
+      <section>
+        <h2>Failure modes</h2>
+        <div class="failure-grid">
+          <article>
+            <h3>Kafka failure mode</h3>
+            <p>
+              A bad partition key funnels too many updates into one partition, which inflates lag and delays downstream
+              embedding workers even when other partitions are idle.
+            </p>
+          </article>
+          <article>
+            <h3>Replay failure mode</h3>
+            <p>
+              Replaying a topic without idempotent downstream writes can duplicate rows, rebuild stale state, or mix old
+              and new embeddings in the same serving path.
+            </p>
+          </article>
+          <article>
+            <h3>HNSW failure mode</h3>
+            <p>
+              If <code>ef_search</code> is too low, the graph search feels impressively fast but silently drops recall,
+              especially when you later apply tenant or freshness filters.
+            </p>
+          </article>
+          <article>
+            <h3>pgvector failure mode</h3>
+            <p>
+              ANN returns candidates before SQL filters finish their work. If the candidate pool is too small, the final
+              filtered result set can come back thin or unstable even though the index is functioning as designed.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="trade-offs">
+        <h2>Trade-offs</h2>
+        <h3>Knobs that actually move system behavior</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Knob</th>
+              <th>What improves</th>
+              <th>What gets worse</th>
+              <th>Failure to watch</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Kafka partition count</td>
+              <td>Producer and consumer parallelism</td>
+              <td>Operational overhead and cross-partition ordering complexity</td>
+              <td>Too few partitions create hot shards; too many inflate coordination cost</td>
+            </tr>
+            <tr>
+              <td>Kafka retention window</td>
+              <td>Time available for replay, backfill, and reindexing</td>
+              <td>Storage footprint</td>
+              <td>Short retention erases the history needed for recovery or model refresh</td>
+            </tr>
+            <tr>
+              <td>HNSW <code>M</code></td>
+              <td>Graph connectivity and usually recall</td>
+              <td>Memory use and build cost</td>
+              <td>Too small and routing gets brittle; too large and RAM cost spikes</td>
+            </tr>
+            <tr>
+              <td>HNSW <code>ef_construction</code></td>
+              <td>Index quality at build time</td>
+              <td>Build latency</td>
+              <td>Weak build search creates a graph that later queries cannot navigate well</td>
+            </tr>
+            <tr>
+              <td>HNSW <code>ef_search</code></td>
+              <td>Recall and post-filter stability</td>
+              <td>Query latency</td>
+              <td>Low values look cheap until a selective filter collapses the final answers</td>
+            </tr>
+            <tr>
+              <td>pgvector rerank depth</td>
+              <td>Final answer quality after ANN candidate generation</td>
+              <td>More row fetches and exact-distance work</td>
+              <td>Skipping rerank can freeze product relevance into whatever the ANN frontier happened to surface</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>When this stack fits, and when it does not</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Situation</th>
+              <th>Why Kafka + HNSW + pgvector fits</th>
+              <th>When to look elsewhere</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>RAG or app search with tenant filters</td>
+              <td>Replayable ingest, ANN acceleration, and SQL filters live in one coherent path</td>
+              <td>If most complexity is outside Postgres and vectors dominate all cost</td>
+            </tr>
+            <tr>
+              <td>Rebuild-heavy systems</td>
+              <td>Kafka history makes it practical to regenerate embeddings or a fresh index version</td>
+              <td>If the source of truth is not event-oriented and replay is unavailable anyway</td>
+            </tr>
+            <tr>
+              <td>Strict exact nearest-neighbor requirements</td>
+              <td>pgvector can still do exact search for smaller sets or validation paths</td>
+              <td>If the serving path must stay exact at very large scale and ANN is unacceptable</td>
+            </tr>
+            <tr>
+              <td>Ultra-large vector-only serving</td>
+              <td>The stack still works, but SQL integration may stop being the main value</td>
+              <td>If specialized vector serving, memory layout, or multi-tier caching dominate design choices</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Real World</h2>
+        <div class="story-grid">
+          <article class="story-card">
+            <p class="story-label">Scenario</p>
+            <h3>Model refresh without upstream resend</h3>
+            <p>
+              A team upgrades its embedding model and needs every document re-embedded. Kafka replay provides the raw
+              history, the embedding worker writes new vectors, and the HNSW index is rebuilt without asking upstream
+              systems to republish old events.
+            </p>
+          </article>
+          <article class="story-card">
+            <p class="story-label">Scenario</p>
+            <h3>Tenant-aware semantic search</h3>
+            <p>
+              Support search and RAG systems rarely return “globally similar” answers. pgvector keeps similarity next to
+              tenant, ACL, and freshness predicates so the final answer respects application rules instead of ANN alone.
+            </p>
+          </article>
+          <article class="story-card">
+            <p class="story-label">Scenario</p>
+            <h3>Recommendation features that can be recomputed safely</h3>
+            <p>
+              User and item events stream through Kafka, HNSW keeps nearest-neighbor lookup fast, and PostgreSQL still
+              joins the candidates with catalog or eligibility state before the application uses them.
+            </p>
+          </article>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Workload</th>
+              <th>How Kafka helps</th>
+              <th>How HNSW helps</th>
+              <th>How pgvector helps</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Knowledge base retrieval</td>
+              <td>Replay document updates and regenerate embeddings after model refresh</td>
+              <td>Keep semantic lookup fast enough for interactive latency</td>
+              <td>Apply tenant scope, freshness, and row-level metadata in one query plan</td>
+            </tr>
+            <tr>
+              <td>Recommendation enrichment</td>
+              <td>Stream profile and item events to rebuild derived features</td>
+              <td>Find semantically similar users or items without brute force</td>
+              <td>Join vector results with catalog state, inventory, or business ranking</td>
+            </tr>
+            <tr>
+              <td>Operational support search</td>
+              <td>Retain ticket and conversation events for backfill and audit</td>
+              <td>Surface similar incidents quickly from large historical corpora</td>
+              <td>Filter by customer, product line, severity, or permissions before returning answers</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>
+          The learning shortcut is simple: treat Kafka as the replayable write history, HNSW as the speed layer, and
+          pgvector as the relational serving envelope. If you need the surrounding database internals, continue with
+          <a href="database-patterns.html">database patterns</a>. If you need the algorithmic background, jump to
+          <a href="distributed-algorithms.html">distributed algorithms</a>.
+        </p>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div>Built for senior engineers and system designers.</div>
+      <div>Distributed Systems Visual Guide.</div>
+    </footer>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        if (!window.d3) {
+          return;
+        }
+
+        var d3 = window.d3;
+
+        function setFacts(node, facts) {
+          node.innerHTML = "";
+          facts.forEach(function (fact) {
+            var chip = document.createElement("span");
+            chip.textContent = fact;
+            node.appendChild(chip);
+          });
+        }
+
+        function wireStepper(config) {
+          var index = 0;
+          var timer = null;
+          var steps = config.steps;
+          var titleNode = document.getElementById(config.id + "-step-title");
+          var noteNode = document.getElementById(config.id + "-step-note");
+          var countNode = document.getElementById(config.id + "-step-count");
+          var factsNode = document.getElementById(config.id + "-step-facts");
+          var playButton = document.getElementById(config.id + "-play");
+          var prevButton = document.getElementById(config.id + "-prev");
+          var nextButton = document.getElementById(config.id + "-next");
+
+          function stop() {
+            if (timer) {
+              window.clearInterval(timer);
+              timer = null;
+            }
+            playButton.textContent = "Play";
+          }
+
+          function paint() {
+            var step = steps[index];
+            titleNode.textContent = step.title;
+            noteNode.textContent = step.note;
+            countNode.textContent = "Step " + String(index + 1) + " of " + String(steps.length);
+            setFacts(factsNode, step.facts);
+            config.render(index, step);
+          }
+
+          prevButton.addEventListener("click", function () {
+            stop();
+            index = (index - 1 + steps.length) % steps.length;
+            paint();
+          });
+
+          nextButton.addEventListener("click", function () {
+            stop();
+            index = (index + 1) % steps.length;
+            paint();
+          });
+
+          playButton.addEventListener("click", function () {
+            if (timer) {
+              stop();
+              return;
+            }
+            playButton.textContent = "Pause";
+            timer = window.setInterval(function () {
+              index = (index + 1) % steps.length;
+              paint();
+            }, 1800);
+          });
+
+          paint();
+        }
+
+        function buildKafkaLab() {
+          var container = document.getElementById("kafka-structure-viz");
+          if (!container) {
+            return;
+          }
+
+          var width = 940;
+          var height = 320;
+          var laneWidth = 620;
+          var laneHeight = 52;
+          var slotWidth = 60;
+          var slotGap = 12;
+          var slotStart = 190;
+          var cursorMap = {
+            41: 220,
+            42: 292,
+            43: 364,
+            44: 436,
+            45: 508
+          };
+
+          var partitions = [
+            { id: "P0", y: 70, broker: "Broker A" },
+            { id: "P1", y: 150, broker: "Broker B" },
+            { id: "P2", y: 230, broker: "Broker C" }
+          ];
+
+          var offsets = [41, 42, 43, 44, 45];
+          var steps = [
+            {
+              title: "Key hashes to one partition",
+              note: "Updates for document 42 land on partition P1 so their relative order stays stable.",
+              facts: ["key=doc_42", "target partition=P1", "ordering scope=per partition"],
+              focusPartition: "P1",
+              activeOffsets: [],
+              fadedOffsets: [],
+              cursor: null,
+              producerTo: 150,
+              replay: false
+            },
+            {
+              title: "Append assigns the next offset",
+              note: "The new embedding event is written at offset 44. The offset is now the record's durable address.",
+              facts: ["append offset=44", "segment=active", "record type=embedding.updated"],
+              focusPartition: "P1",
+              activeOffsets: ["P1-44"],
+              fadedOffsets: [],
+              cursor: 44,
+              producerTo: 150,
+              replay: false
+            },
+            {
+              title: "Segments age out without changing offsets",
+              note: "Older bytes are grouped into rolled segments. Segment boundaries change storage layout, not record identity.",
+              facts: ["segment A=41..43", "segment B=44..45", "offsets stay immutable"],
+              focusPartition: "P1",
+              activeOffsets: ["P1-44"],
+              fadedOffsets: ["P1-41", "P1-42", "P1-43"],
+              cursor: 44,
+              producerTo: null,
+              replay: false
+            },
+            {
+              title: "Consumer group commits its own cursor",
+              note: "The embedding worker records that it has safely processed through offset 44. Kafka stores bytes; the consumer stores progress.",
+              facts: ["consumer group=vector-builder", "committed offset=44", "replay still possible"],
+              focusPartition: "P1",
+              activeOffsets: ["P1-44"],
+              fadedOffsets: [],
+              cursor: 44,
+              producerTo: null,
+              replay: false
+            },
+            {
+              title: "Replay resets the cursor, not the log",
+              note: "To rebuild an index version, the worker moves its read position back to offset 41 and consumes the same durable history again.",
+              facts: ["cursor reset=41", "log unchanged", "reindex path uses replay"],
+              focusPartition: "P1",
+              activeOffsets: ["P1-41", "P1-42", "P1-43", "P1-44"],
+              fadedOffsets: [],
+              cursor: 41,
+              producerTo: null,
+              replay: true
+            }
+          ];
+
+          var svg = d3
+            .select(container)
+            .append("svg")
+            .attr("viewBox", "0 0 " + width + " " + height)
+            .attr("role", "presentation");
+
+          var defs = svg.append("defs");
+          var kafkaFill = defs.append("linearGradient").attr("id", "kafkaActiveFill").attr("x1", "0%").attr("x2", "100%");
+          kafkaFill.append("stop").attr("offset", "0%").attr("stop-color", "var(--accent-primary)");
+          kafkaFill.append("stop").attr("offset", "100%").attr("stop-color", "var(--status-good)");
+
+          svg
+            .append("text")
+            .attr("class", "kafka-caption")
+            .attr("x", 60)
+            .attr("y", 28)
+            .text("Producer");
+
+          svg
+            .append("text")
+            .attr("class", "kafka-caption")
+            .attr("x", 190)
+            .attr("y", 28)
+            .text("Topic: embeddings");
+
+          svg
+            .append("text")
+            .attr("class", "kafka-caption")
+            .attr("x", 800)
+            .attr("y", 28)
+            .text("Consumer group");
+
+          var laneGroups = svg
+            .append("g")
+            .selectAll("g")
+            .data(partitions)
+            .enter()
+            .append("g")
+            .attr("transform", function (partition) {
+              return "translate(0," + String(partition.y) + ")";
+            });
+
+          laneGroups
+            .append("rect")
+            .attr("class", "kafka-lane")
+            .attr("x", 160)
+            .attr("y", -26)
+            .attr("width", laneWidth)
+            .attr("height", laneHeight)
+            .attr("rx", 18);
+
+          laneGroups
+            .append("text")
+            .attr("class", "kafka-label")
+            .attr("x", 92)
+            .attr("y", -2)
+            .text(function (partition) {
+              return partition.id;
+            });
+
+          laneGroups
+            .append("text")
+            .attr("class", "kafka-offset")
+            .attr("x", 92)
+            .attr("y", 16)
+            .text(function (partition) {
+              return partition.broker;
+            });
+
+          laneGroups
+            .append("rect")
+            .attr("class", "kafka-segment")
+            .attr("x", 184)
+            .attr("y", -18)
+            .attr("width", 204)
+            .attr("height", 36)
+            .attr("rx", 12);
+
+          laneGroups
+            .append("rect")
+            .attr("class", "kafka-segment")
+            .attr("x", 402)
+            .attr("y", -18)
+            .attr("width", 134)
+            .attr("height", 36)
+            .attr("rx", 12);
+
+          laneGroups
+            .append("text")
+            .attr("class", "kafka-caption")
+            .attr("x", 220)
+            .attr("y", -28)
+            .text("rolled segment");
+
+          laneGroups
+            .append("text")
+            .attr("class", "kafka-caption")
+            .attr("x", 432)
+            .attr("y", -28)
+            .text("active segment");
+
+          var slotGroups = laneGroups
+            .append("g")
+            .selectAll("g")
+            .data(function (partition) {
+              return offsets.map(function (offset, index) {
+                return {
+                  id: partition.id + "-" + String(offset),
+                  partitionId: partition.id,
+                  offset: offset,
+                  x: slotStart + index * (slotWidth + slotGap)
+                };
+              });
+            })
+            .enter()
+            .append("g");
+
+          slotGroups
+            .append("rect")
+            .attr("class", "kafka-slot")
+            .attr("x", function (slot) {
+              return slot.x;
+            })
+            .attr("y", -14)
+            .attr("width", slotWidth)
+            .attr("height", 28)
+            .attr("rx", 10);
+
+          slotGroups
+            .append("text")
+            .attr("class", "kafka-offset")
+            .attr("x", function (slot) {
+              return slot.x + slotWidth / 2;
+            })
+            .attr("y", 5)
+            .attr("text-anchor", "middle")
+            .text(function (slot) {
+              return String(slot.offset);
+            });
+
+          var producerArrow = svg
+            .append("path")
+            .attr("class", "kafka-arrow")
+            .attr("d", "M 92 150 C 120 150, 145 150, 170 150");
+
+          var producerDot = svg
+            .append("circle")
+            .attr("cx", 86)
+            .attr("cy", 150)
+            .attr("r", 7)
+            .attr("fill", "var(--accent-tertiary)");
+
+          var producerLabel = svg
+            .append("text")
+            .attr("class", "kafka-offset")
+            .attr("x", 28)
+            .attr("y", 154)
+            .text("doc_42");
+
+          var consumerBox = svg
+            .append("rect")
+            .attr("class", "kafka-badge")
+            .attr("x", 786)
+            .attr("y", 128)
+            .attr("width", 130)
+            .attr("height", 44)
+            .attr("rx", 16);
+
+          svg
+            .append("text")
+            .attr("class", "kafka-label")
+            .attr("x", 800)
+            .attr("y", 154)
+            .text("vector-builder");
+
+          var cursorLine = svg
+            .append("path")
+            .attr("class", "kafka-cursor-line")
+            .attr("d", "M 436 106 L 436 84");
+
+          var cursorArrow = svg
+            .append("path")
+            .attr("class", "kafka-cursor-line")
+            .attr("d", "M 430 88 L 436 78 L 442 88");
+
+          var cursorLabel = svg
+            .append("text")
+            .attr("class", "kafka-offset")
+            .attr("x", 388)
+            .attr("y", 74)
+            .text("committed offset");
+
+          wireStepper({
+            id: "kafka",
+            steps: steps,
+            render: function (_index, step) {
+              laneGroups
+                .selectAll(".kafka-lane")
+                .attr("class", function (partition) {
+                  return "kafka-lane" + (partition.id === step.focusPartition ? " is-focused" : "");
+                });
+
+              slotGroups
+                .selectAll(".kafka-slot")
+                .attr("class", function (slot) {
+                  var classes = ["kafka-slot"];
+                  if (step.activeOffsets.indexOf(slot.id) !== -1) {
+                    classes.push("is-active");
+                  }
+                  if (step.fadedOffsets.indexOf(slot.id) !== -1) {
+                    classes.push("is-faded");
+                  }
+                  return classes.join(" ");
+                });
+
+              producerArrow
+                .attr("class", "kafka-arrow" + (step.producerTo ? " is-active" : ""))
+                .attr(
+                  "d",
+                  step.producerTo
+                    ? "M 92 150 C 120 150, 145 150, 170 150"
+                    : "M 92 150 C 120 150, 145 150, 160 150"
+                );
+
+              producerDot.style("opacity", step.producerTo ? 1 : 0.25);
+              producerLabel.style("opacity", step.producerTo ? 1 : 0.25);
+
+              cursorLine
+                .attr("class", "kafka-cursor-line" + (step.replay ? " is-replay" : " is-active"))
+                .attr("d", "M " + String(cursorMap[step.cursor] || 436) + " 106 L " + String(cursorMap[step.cursor] || 436) + " 84")
+                .style("opacity", step.cursor ? 1 : 0);
+
+              cursorArrow
+                .attr("class", "kafka-cursor-line" + (step.replay ? " is-replay" : " is-active"))
+                .attr(
+                  "d",
+                  "M " +
+                    String((cursorMap[step.cursor] || 436) - 6) +
+                    " 88 L " +
+                    String(cursorMap[step.cursor] || 436) +
+                    " 78 L " +
+                    String((cursorMap[step.cursor] || 436) + 6) +
+                    " 88"
+                )
+                .style("opacity", step.cursor ? 1 : 0);
+
+              cursorLabel
+                .text(step.replay ? "reset offset for replay" : "committed offset")
+                .attr("x", (cursorMap[step.cursor] || 436) - 54)
+                .style("opacity", step.cursor ? 1 : 0);
+
+              consumerBox.attr("class", "kafka-badge" + (step.cursor ? " is-active" : ""));
+            }
+          });
+        }
+
+        function buildHnswLab() {
+          var container = document.getElementById("hnsw-structure-viz");
+          if (!container) {
+            return;
+          }
+
+          var width = 940;
+          var height = 340;
+          var queryPoint = { x: 838, y: 52 };
+          var nodes = [
+            { id: "A", x: 170, y: 72, layer: 2 },
+            { id: "B", x: 390, y: 72, layer: 2 },
+            { id: "C", x: 650, y: 72, layer: 2 },
+            { id: "D", x: 140, y: 158, layer: 1 },
+            { id: "E", x: 300, y: 158, layer: 1 },
+            { id: "F", x: 470, y: 158, layer: 1 },
+            { id: "G", x: 640, y: 158, layer: 1 },
+            { id: "H", x: 810, y: 158, layer: 1 },
+            { id: "I", x: 92, y: 252, layer: 0 },
+            { id: "J", x: 220, y: 252, layer: 0 },
+            { id: "K", x: 350, y: 252, layer: 0 },
+            { id: "L", x: 500, y: 252, layer: 0 },
+            { id: "M", x: 642, y: 252, layer: 0 },
+            { id: "N", x: 772, y: 252, layer: 0 },
+            { id: "O", x: 878, y: 252, layer: 0 }
+          ];
+
+          var edges = [
+            ["A", "B"], ["B", "C"],
+            ["D", "E"], ["E", "F"], ["F", "G"], ["G", "H"],
+            ["I", "J"], ["J", "K"], ["K", "L"], ["L", "M"], ["M", "N"], ["N", "O"],
+            ["B", "F"], ["C", "G"], ["C", "H"], ["E", "K"], ["F", "L"], ["G", "M"], ["H", "N"], ["H", "O"]
+          ].map(function (pair, index) {
+            return { id: "edge-" + String(index), from: pair[0], to: pair[1] };
+          });
+
+          var nodeById = {};
+          nodes.forEach(function (node) {
+            nodeById[node.id] = node;
+          });
+
+          var steps = [
+            {
+              title: "Start from the top-layer entry point",
+              note: "The query begins at node B because it is the current highest-layer entry into the graph.",
+              facts: ["entry point=B", "query near N/O", "upper layer=sparse shortcuts"],
+              activeNodes: ["B"],
+              activeEdges: [],
+              candidateNodes: [],
+              resultNodes: [],
+              path: ["B"]
+            },
+            {
+              title: "Greedy routing on the top layer",
+              note: "Node C is closer to the query than B, so the walk jumps there before descending.",
+              facts: ["top hop=B→C", "goal=move fast across space", "search style=greedy"],
+              activeNodes: ["B", "C"],
+              activeEdges: ["B-C"],
+              candidateNodes: [],
+              resultNodes: [],
+              path: ["B", "C"]
+            },
+            {
+              title: "Descend and keep the best-so-far node",
+              note: "The search drops to layer 1 from C and continues from the best location found so far.",
+              facts: ["carry best node=C", "layer=1", "next local region=G,H"],
+              activeNodes: ["C", "G", "H"],
+              activeEdges: ["C-G", "G-H"],
+              candidateNodes: [],
+              resultNodes: [],
+              path: ["B", "C", "G", "H"]
+            },
+            {
+              title: "Base layer expands a wider frontier",
+              note: "At layer 0 the algorithm explores more broadly around H so one unlucky hop does not trap the search.",
+              facts: ["base layer=dense", "frontier nodes=M,N,O", "ef_search controls breadth"],
+              activeNodes: ["H", "M", "N", "O"],
+              activeEdges: ["H-N", "N-O", "M-N"],
+              candidateNodes: ["M", "N", "O"],
+              resultNodes: [],
+              path: ["B", "C", "G", "H", "N"]
+            },
+            {
+              title: "Keep the best candidates seen so far",
+              note: "The frontier now holds the strongest nearby nodes. The worst candidate in the frontier sets the quality bar for continuing.",
+              facts: ["candidate heap=[N,O,M]", "best distance≈0.06", "stop when frontier cannot improve"],
+              activeNodes: ["M", "N", "O"],
+              activeEdges: ["M-N", "N-O"],
+              candidateNodes: ["M", "N", "O"],
+              resultNodes: ["N", "O", "M"],
+              path: ["B", "C", "G", "H", "N", "O"]
+            },
+            {
+              title: "Return top-k nearest neighbors",
+              note: "The result set is approximate but usually very close to the exact nearest vectors, which is why HNSW is useful in practice.",
+              facts: ["top-k=[N,O,M]", "approximate=true", "latency beats full scan"],
+              activeNodes: ["N", "O", "M"],
+              activeEdges: [],
+              candidateNodes: [],
+              resultNodes: ["N", "O", "M"],
+              path: ["B", "C", "G", "H", "N", "O"]
+            }
+          ];
+
+          function edgeKey(edge) {
+            return [edge.from, edge.to].sort().join("-");
+          }
+
+          var svg = d3
+            .select(container)
+            .append("svg")
+            .attr("viewBox", "0 0 " + width + " " + height)
+            .attr("role", "presentation");
+
+          var layerBands = [
+            { label: "Layer 2", y: 46 },
+            { label: "Layer 1", y: 132 },
+            { label: "Layer 0", y: 226 }
+          ];
+
+          svg
+            .append("g")
+            .selectAll("g")
+            .data(layerBands)
+            .enter()
+            .append("g")
+            .each(function (band) {
+              var group = d3.select(this);
+              group
+                .append("rect")
+                .attr("class", "hnsw-layer-band")
+                .attr("x", 52)
+                .attr("y", band.y)
+                .attr("width", 838)
+                .attr("height", 52)
+                .attr("rx", 22);
+              group
+                .append("text")
+                .attr("class", "hnsw-metric")
+                .attr("x", 62)
+                .attr("y", band.y - 10)
+                .text(band.label);
+            });
+
+          svg
+            .append("path")
+            .attr("class", "hnsw-path")
+            .attr("id", "hnsw-path");
+
+          var edgeSelection = svg
+            .append("g")
+            .selectAll("line")
+            .data(edges)
+            .enter()
+            .append("line")
+            .attr("class", "hnsw-edge")
+            .attr("x1", function (edge) {
+              return nodeById[edge.from].x;
+            })
+            .attr("y1", function (edge) {
+              return nodeById[edge.from].y;
+            })
+            .attr("x2", function (edge) {
+              return nodeById[edge.to].x;
+            })
+            .attr("y2", function (edge) {
+              return nodeById[edge.to].y;
+            });
+
+          var nodeSelection = svg
+            .append("g")
+            .selectAll("g")
+            .data(nodes)
+            .enter()
+            .append("g");
+
+          nodeSelection
+            .append("circle")
+            .attr("class", "hnsw-node")
+            .attr("cx", function (node) {
+              return node.x;
+            })
+            .attr("cy", function (node) {
+              return node.y;
+            })
+            .attr("r", 18);
+
+          nodeSelection
+            .append("text")
+            .attr("class", "hnsw-label")
+            .attr("x", function (node) {
+              return node.x;
+            })
+            .attr("y", function (node) {
+              return node.y + 5;
+            })
+            .attr("text-anchor", "middle")
+            .text(function (node) {
+              return node.id;
+            });
+
+          svg
+            .append("rect")
+            .attr("class", "pg-pill")
+            .attr("x", 734)
+            .attr("y", 18)
+            .attr("width", 150)
+            .attr("height", 24)
+            .attr("rx", 12);
+
+          svg
+            .append("text")
+            .attr("class", "hnsw-metric")
+            .attr("x", 748)
+            .attr("y", 35)
+            .text("query vector");
+
+          svg
+            .append("path")
+            .attr("class", "hnsw-path")
+            .attr("d", "M 814 42 L 830 52")
+            .style("stroke", "var(--accent-tertiary)")
+            .style("stroke-dasharray", "none")
+            .style("stroke-width", 2);
+
+          svg
+            .append("rect")
+            .attr("class", "hnsw-query")
+            .attr("x", queryPoint.x - 10)
+            .attr("y", queryPoint.y - 10)
+            .attr("width", 20)
+            .attr("height", 20)
+            .attr("rx", 4)
+            .attr("transform", "rotate(45 " + String(queryPoint.x) + " " + String(queryPoint.y) + ")");
+
+          function pathString(ids) {
+            return ids
+              .map(function (id, index) {
+                var node = nodeById[id];
+                if (index === 0) {
+                  return "M " + String(node.x) + " " + String(node.y);
+                }
+                return "L " + String(node.x) + " " + String(node.y);
+              })
+              .join(" ");
+          }
+
+          wireStepper({
+            id: "hnsw",
+            steps: steps,
+            render: function (_index, step) {
+              edgeSelection.attr("class", function (edge) {
+                return "hnsw-edge" + (step.activeEdges.indexOf(edgeKey(edge)) !== -1 ? " is-active" : "");
+              });
+
+              nodeSelection.selectAll(".hnsw-node").attr("class", function (node) {
+                var classes = ["hnsw-node"];
+                if (node.id === "B") {
+                  classes.push("is-entry");
+                }
+                if (step.activeNodes.indexOf(node.id) !== -1) {
+                  classes.push("is-active");
+                }
+                if (step.candidateNodes.indexOf(node.id) !== -1) {
+                  classes.push("is-candidate");
+                }
+                if (step.resultNodes.indexOf(node.id) !== -1) {
+                  classes.push("is-result");
+                }
+                return classes.join(" ");
+              });
+
+              svg.select("#hnsw-path").attr("d", pathString(step.path));
+            }
+          });
+        }
+
+        function buildPgvectorLab() {
+          var container = document.getElementById("pgvector-structure-viz");
+          if (!container) {
+            return;
+          }
+
+          var width = 940;
+          var height = 320;
+          var rows = [
+            { id: "doc_17", tenant: 42, x: 302, y: 92 },
+            { id: "doc_05", tenant: 17, x: 302, y: 128 },
+            { id: "doc_31", tenant: 42, x: 302, y: 164 },
+            { id: "doc_08", tenant: 42, x: 302, y: 200 },
+            { id: "doc_22", tenant: 17, x: 302, y: 236 }
+          ];
+
+          var steps = [
+            {
+              title: "Query vector arrives from the application",
+              note: "The application embeds the user query and hands PostgreSQL a normal SQL statement plus a vector parameter.",
+              facts: ["query vector dimension=1536", "tenant filter=42", "limit=3"],
+              activeBoxes: ["query"],
+              candidateRows: [],
+              filteredRows: [],
+              resultRows: [],
+              activeLinks: ["query-index"],
+              filterLinks: []
+            },
+            {
+              title: "HNSW index produces candidate row IDs",
+              note: "The ANN index narrows the search to a small candidate set instead of scanning every row in the table.",
+              facts: ["candidates=[17,05,31,08,22]", "index type=HNSW", "distance op=cosine"],
+              activeBoxes: ["index"],
+              candidateRows: ["doc_17", "doc_05", "doc_31", "doc_08", "doc_22"],
+              filteredRows: [],
+              resultRows: [],
+              activeLinks: ["query-index", "index-table"],
+              filterLinks: []
+            },
+            {
+              title: "Heap fetch loads the candidate rows",
+              note: "PostgreSQL fetches the matching rows because the index only points to where they live; the metadata still lives in the table.",
+              facts: ["heap fetch=true", "metadata available", "ANN does not skip SQL"],
+              activeBoxes: ["index", "table"],
+              candidateRows: ["doc_17", "doc_05", "doc_31", "doc_08", "doc_22"],
+              filteredRows: [],
+              resultRows: [],
+              activeLinks: ["index-table"],
+              filterLinks: []
+            },
+            {
+              title: "SQL filters remove the wrong tenant",
+              note: "Rows for tenant 17 are valid ANN candidates but invalid final answers, so the SQL filter removes them.",
+              facts: ["WHERE tenant_id=42", "dropped rows=doc_05, doc_22", "post-filter shrinkage matters"],
+              activeBoxes: ["table", "filters"],
+              candidateRows: ["doc_17", "doc_05", "doc_31", "doc_08", "doc_22"],
+              filteredRows: ["doc_05", "doc_22"],
+              resultRows: [],
+              activeLinks: ["table-filter"],
+              filterLinks: ["table-filter"]
+            },
+            {
+              title: "Rerank and return the final rows",
+              note: "The surviving rows are ranked and returned as normal SQL results, ready for joins or application rendering.",
+              facts: ["results=[doc_17, doc_31, doc_08]", "rerank depth=5", "SQL result shape preserved"],
+              activeBoxes: ["filters", "results"],
+              candidateRows: ["doc_17", "doc_31", "doc_08"],
+              filteredRows: [],
+              resultRows: ["doc_17", "doc_31", "doc_08"],
+              activeLinks: ["filter-results"],
+              filterLinks: []
+            }
+          ];
+
+          var svg = d3
+            .select(container)
+            .append("svg")
+            .attr("viewBox", "0 0 " + width + " " + height)
+            .attr("role", "presentation");
+
+          var boxes = [
+            { id: "query", label: "Query vector", x: 58, y: 118, width: 150, height: 58 },
+            { id: "index", label: "HNSW index", x: 228, y: 52, width: 170, height: 64 },
+            { id: "table", label: "documents table", x: 228, y: 134, width: 230, height: 126 },
+            { id: "filters", label: "SQL filters", x: 520, y: 102, width: 150, height: 74 },
+            { id: "results", label: "Top-k results", x: 732, y: 112, width: 160, height: 92 }
+          ];
+
+          var links = [
+            { id: "query-index", from: [208, 146], to: [228, 84] },
+            { id: "index-table", from: [398, 84], to: [458, 176] },
+            { id: "table-filter", from: [458, 176], to: [520, 138] },
+            { id: "filter-results", from: [670, 138], to: [732, 158] }
+          ];
+
+          var boxSelection = svg
+            .append("g")
+            .selectAll("g")
+            .data(boxes)
+            .enter()
+            .append("g");
+
+          boxSelection
+            .append("rect")
+            .attr("class", "pg-box")
+            .attr("x", function (box) {
+              return box.x;
+            })
+            .attr("y", function (box) {
+              return box.y;
+            })
+            .attr("width", function (box) {
+              return box.width;
+            })
+            .attr("height", function (box) {
+              return box.height;
+            })
+            .attr("rx", 18);
+
+          boxSelection
+            .append("text")
+            .attr("class", "pg-label")
+            .attr("x", function (box) {
+              return box.x + 16;
+            })
+            .attr("y", function (box) {
+              return box.y + 22;
+            })
+            .text(function (box) {
+              return box.label;
+            });
+
+          var linkSelection = svg
+            .append("g")
+            .selectAll("line")
+            .data(links)
+            .enter()
+            .append("line")
+            .attr("class", "pg-link")
+            .attr("x1", function (link) {
+              return link.from[0];
+            })
+            .attr("y1", function (link) {
+              return link.from[1];
+            })
+            .attr("x2", function (link) {
+              return link.to[0];
+            })
+            .attr("y2", function (link) {
+              return link.to[1];
+            });
+
+          var rowSelection = svg
+            .append("g")
+            .selectAll("g")
+            .data(rows)
+            .enter()
+            .append("g");
+
+          rowSelection
+            .append("rect")
+            .attr("class", "pg-row")
+            .attr("x", function (row) {
+              return row.x;
+            })
+            .attr("y", function (row) {
+              return row.y;
+            })
+            .attr("width", 126)
+            .attr("height", 24)
+            .attr("rx", 10);
+
+          rowSelection
+            .append("text")
+            .attr("class", "pg-row-label")
+            .attr("x", function (row) {
+              return row.x + 10;
+            })
+            .attr("y", function (row) {
+              return row.y + 16;
+            })
+            .text(function (row) {
+              return row.id + "  tenant=" + String(row.tenant);
+            });
+
+          var resultRows = [
+            { id: "doc_17", y: 146 },
+            { id: "doc_31", y: 172 },
+            { id: "doc_08", y: 198 }
+          ];
+
+          var resultSelection = svg
+            .append("g")
+            .selectAll("g")
+            .data(resultRows)
+            .enter()
+            .append("g");
+
+          resultSelection
+            .append("rect")
+            .attr("class", "pg-pill")
+            .attr("x", 748)
+            .attr("y", function (row) {
+              return row.y;
+            })
+            .attr("width", 122)
+            .attr("height", 20)
+            .attr("rx", 10);
+
+          resultSelection
+            .append("text")
+            .attr("class", "pg-row-label")
+            .attr("x", 762)
+            .attr("y", function (row) {
+              return row.y + 14;
+            })
+            .text(function (row) {
+              return row.id;
+            });
+
+          wireStepper({
+            id: "pgvector",
+            steps: steps,
+            render: function (_index, step) {
+              boxSelection.selectAll(".pg-box").attr("class", function (box) {
+                var classes = ["pg-box"];
+                if (step.activeBoxes.indexOf(box.id) !== -1) {
+                  classes.push("is-active");
+                }
+                if (box.id === "filters" && step.filteredRows.length) {
+                  classes.push("is-filtered");
+                }
+                return classes.join(" ");
+              });
+
+              linkSelection.attr("class", function (link) {
+                var classes = ["pg-link"];
+                if (step.activeLinks.indexOf(link.id) !== -1) {
+                  classes.push("is-active");
+                }
+                if (step.filterLinks.indexOf(link.id) !== -1) {
+                  classes.push("is-filter");
+                }
+                return classes.join(" ");
+              });
+
+              rowSelection.selectAll(".pg-row").attr("class", function (row) {
+                var classes = ["pg-row"];
+                if (step.candidateRows.indexOf(row.id) !== -1) {
+                  classes.push("is-candidate");
+                }
+                if (step.filteredRows.indexOf(row.id) !== -1) {
+                  classes.push("is-filtered");
+                }
+                if (step.resultRows.indexOf(row.id) !== -1) {
+                  classes.push("is-result");
+                }
+                return classes.join(" ");
+              });
+
+              resultSelection.selectAll(".pg-pill").attr("class", function (row) {
+                return "pg-pill" + (step.resultRows.indexOf(row.id) !== -1 ? " is-active" : "");
+              });
+            }
+          });
+        }
+
+        buildKafkaLab();
+        buildHnswLab();
+        buildPgvectorLab();
+      });
+    </script>
+  </body>
+</html>

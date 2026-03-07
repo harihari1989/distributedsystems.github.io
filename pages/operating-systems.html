@@ -154,13 +154,17 @@ sequenceDiagram
       <h2>Architecture diagram</h2>
       <pre class="mermaid">
 flowchart TB
-  App[Applications] --> Syscall[System Call API]
-  Syscall --> Kernel[Kernel]
-  Kernel --> Sched[CPU Scheduler]
-  Kernel --> VM[Virtual Memory]
-  Kernel --> FS[File System]
-  Kernel --> Driver[Device Drivers]
-  Driver --> HW[Hardware]
+  App[Application thread] --> Syscall[read syscall]
+  Syscall --> Kernel[Kernel entry]
+  Kernel --> Cache{Page cache hit?}
+  Cache -->|yes| Return[Copy bytes to user buffer]
+  Cache -->|no| IO[I/O scheduler]
+  IO --> Driver[Block driver]
+  Driver --> Disk[Disk / SSD]
+  Disk --> IRQ[Device interrupt]
+  IRQ --> Wake[Wake blocked thread]
+  Wake --> Return
+  Return --> App
         </pre>
     </section>
 
@@ -317,11 +321,60 @@ flowchart TB
         nodeById[node.id] = node;
       });
 
+      function projectRectEdge(source, target) {
+        var halfWidth = nodeWidth / 2 - 8;
+        var halfHeight = nodeHeight / 2 - 8;
+        var dx = target.x - source.x;
+        var dy = target.y - source.y;
+        var scale = 1 / Math.max(Math.abs(dx) / halfWidth, Math.abs(dy) / halfHeight);
+
+        return {
+          x: source.x + dx * scale,
+          y: source.y + dy * scale
+        };
+      }
+
+      var edgeById = {};
+      edges.forEach(function (edge) {
+        var from = nodeById[edge.from];
+        var to = nodeById[edge.to];
+        edge.points = {
+          start: projectRectEdge(from, to),
+          end: projectRectEdge(to, from)
+        };
+        edgeById[edge.id] = edge;
+      });
+
       var svg = window.d3
         .select(container)
         .append("svg")
         .attr("viewBox", "0 0 " + width + " " + height)
         .attr("role", "presentation");
+
+      var defs = svg.append("defs");
+      var rootStyles = window.getComputedStyle(document.documentElement);
+      var defaultArrowColor = rootStyles.getPropertyValue("--text-tertiary").trim() || "#718096";
+      var activeArrowColor = rootStyles.getPropertyValue("--accent-primary").trim() || "#3b82f6";
+
+      function appendArrowMarker(id, color) {
+        var marker = defs
+          .append("marker")
+          .attr("id", id)
+          .attr("viewBox", "0 0 12 12")
+          .attr("refX", 10)
+          .attr("refY", 6)
+          .attr("markerWidth", 10)
+          .attr("markerHeight", 10)
+          .attr("orient", "auto-start-reverse");
+
+        marker
+          .append("path")
+          .attr("d", "M 0 0 L 12 6 L 0 12 z")
+          .attr("fill", color);
+      }
+
+      appendArrowMarker("os-arrow", defaultArrowColor);
+      appendArrowMarker("os-arrow-active", activeArrowColor);
 
       var edgeSelection = svg
         .append("g")
@@ -330,17 +383,18 @@ flowchart TB
         .enter()
         .append("line")
         .attr("class", "os-edge")
+        .attr("marker-end", "url(#os-arrow)")
         .attr("x1", function (edge) {
-          return nodeById[edge.from].x;
+          return edge.points.start.x;
         })
         .attr("y1", function (edge) {
-          return nodeById[edge.from].y;
+          return edge.points.start.y;
         })
         .attr("x2", function (edge) {
-          return nodeById[edge.to].x;
+          return edge.points.end.x;
         })
         .attr("y2", function (edge) {
-          return nodeById[edge.to].y;
+          return edge.points.end.y;
         });
 
       var nodeGroup = svg
@@ -377,7 +431,59 @@ flowchart TB
           return node.label;
         });
 
+      var flowToken = svg
+        .append("circle")
+        .attr("class", "os-packet")
+        .attr("r", 8)
+        .style("opacity", 0);
+
       var activeIndex = 0;
+
+      function animateStep(step) {
+        flowToken.interrupt();
+
+        if (!step.edges.length) {
+          flowToken.style("opacity", 0);
+          return;
+        }
+
+        var sequence = step.edges
+          .map(function (edgeId) {
+            return edgeById[edgeId];
+          })
+          .filter(Boolean);
+
+        if (!sequence.length) {
+          flowToken.style("opacity", 0);
+          return;
+        }
+
+        flowToken
+          .attr("cx", sequence[0].points.start.x)
+          .attr("cy", sequence[0].points.start.y)
+          .style("opacity", 0.95);
+
+        function runEdge(index) {
+          var edge = sequence[index];
+          flowToken
+            .transition()
+            .duration(420)
+            .ease(window.d3.easeCubicInOut)
+            .attr("cx", edge.points.end.x)
+            .attr("cy", edge.points.end.y)
+            .on("end", function () {
+              if (index + 1 < sequence.length) {
+                var nextEdge = sequence[index + 1];
+                flowToken
+                  .attr("cx", nextEdge.points.start.x)
+                  .attr("cy", nextEdge.points.start.y);
+                runEdge(index + 1);
+              }
+            });
+        }
+
+        runEdge(0);
+      }
 
       function updateStep(index) {
         activeIndex = index;
@@ -387,14 +493,23 @@ flowchart TB
           return step.nodes.indexOf(node.id) !== -1;
         });
 
-        edgeSelection.classed("is-active", function (edge) {
-          return step.edges.indexOf(edge.id) !== -1;
+        nodeGroup.select("text").classed("is-active", function (node) {
+          return step.nodes.indexOf(node.id) !== -1;
         });
+
+        edgeSelection
+          .classed("is-active", function (edge) {
+            return step.edges.indexOf(edge.id) !== -1;
+          })
+          .attr("marker-end", function (edge) {
+            return step.edges.indexOf(edge.id) !== -1 ? "url(#os-arrow-active)" : "url(#os-arrow)";
+          });
 
         stepLabel.textContent = "Step " + (index + 1) + " of " + steps.length + ": " + step.label;
         stepNote.textContent = step.note;
         prevButton.disabled = index === 0;
         nextButton.disabled = index === steps.length - 1;
+        animateStep(step);
       }
 
       prevButton.addEventListener("click", function () {

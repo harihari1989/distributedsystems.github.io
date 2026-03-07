@@ -92,6 +92,25 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+.stagger-in {
+  opacity: 0;
+  transform: translateY(18px);
+  animation: staggerIn 560ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: opacity, transform;
+}
+
+@keyframes staggerIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Glassmorphism Header */
 .site-header {
   display: grid;
@@ -444,6 +463,118 @@ pre {
   transform: translateY(-1px);
 }
 
+.os-step-button:disabled,
+.db-step-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.os-playground {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent-primary) 10%, transparent), transparent 30%),
+    linear-gradient(180deg, var(--bg-secondary), var(--bg-tertiary));
+  box-shadow: var(--shadow-sm);
+}
+
+.os-stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.os-step-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.os-viz {
+  padding: 1rem;
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent-secondary) 8%, transparent), transparent 28%),
+    linear-gradient(180deg, var(--bg-secondary), var(--bg-tertiary));
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.os-viz svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.os-edge {
+  stroke: color-mix(in srgb, var(--text-tertiary) 80%, transparent);
+  stroke-width: 3px;
+  stroke-linecap: round;
+  opacity: 0.38;
+  transition: stroke 220ms ease, opacity 220ms ease;
+}
+
+.os-edge.is-active {
+  stroke: var(--accent-primary);
+  opacity: 1;
+  stroke-dasharray: 10 7;
+  animation: osEdgeFlow 1s linear infinite;
+}
+
+.os-node {
+  fill: var(--bg-secondary);
+  stroke: var(--border-medium);
+  stroke-width: 2px;
+  transition: fill 220ms ease, stroke 220ms ease, filter 220ms ease, transform 220ms ease;
+}
+
+.os-node.is-active {
+  fill: color-mix(in srgb, var(--accent-primary) 16%, var(--bg-secondary));
+  stroke: var(--accent-primary);
+  filter: drop-shadow(0 10px 16px color-mix(in srgb, var(--accent-primary) 18%, transparent));
+}
+
+.os-label {
+  fill: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  pointer-events: none;
+  transition: fill 220ms ease, font-weight 220ms ease;
+}
+
+.os-label.is-active {
+  fill: var(--accent-primary);
+  font-weight: 700;
+}
+
+.os-packet {
+  fill: var(--accent-tertiary);
+  stroke: var(--bg-secondary);
+  stroke-width: 3px;
+  filter: drop-shadow(0 8px 12px color-mix(in srgb, var(--accent-tertiary) 28%, transparent));
+}
+
+@keyframes osEdgeFlow {
+  from {
+    stroke-dashoffset: 17;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 /* Footer */
 .site-footer {
   text-align: center;
@@ -486,12 +617,20 @@ pre {
 
 .playground-controls input,
 .playground-controls select {
-  border: 1px solid var(--border);
-  background: var(--surface-1);
-  color: var(--text);
+  border: 1px solid var(--border-medium);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
   padding: 0.35rem 0.5rem;
   font-family: var(--font-mono);
   border-radius: var(--radius-sm);
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.playground-controls input:focus,
+.playground-controls select:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 14%, transparent);
 }
 
 .playground-output {
@@ -515,24 +654,25 @@ pre {
 
 .playground-bar-fill {
   height: 0.6rem;
-  background: var(--surface-3);
-  transition: width 200ms ease;
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+  transition: width 260ms ease;
   border-radius: 999px;
 }
 
 .playground-meter {
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-medium);
   height: 0.7rem;
   position: relative;
   border-radius: 999px;
-  background: var(--surface-1);
+  background: var(--bg-tertiary);
+  overflow: hidden;
 }
 
 .playground-meter-fill {
   height: 100%;
-  background: var(--surface-4);
+  background: linear-gradient(90deg, var(--accent-tertiary), var(--accent-secondary));
   width: 0%;
-  transition: width 200ms ease;
+  transition: width 260ms ease;
   border-radius: 999px;
 }
 
@@ -551,14 +691,14 @@ pre {
 
 .playground-pod {
   height: 14px;
-  border: 1px solid var(--border);
-  background: var(--surface-3);
-  transition: opacity 200ms ease, background 200ms ease;
+  border: 1px solid var(--border-medium);
+  background: linear-gradient(90deg, var(--accent-primary), var(--status-good));
+  transition: opacity 200ms ease, background 200ms ease, transform 200ms ease;
   border-radius: 6px;
 }
 
 .playground-pod.is-idle {
-  background: var(--bg);
+  background: var(--bg-secondary);
   opacity: 0.4;
 }
 
@@ -806,7 +946,7 @@ pre {
 
 .k8s-step.is-active {
   color: var(--text-primary);
-  background: rgba(59, 130, 246, 0.16);
+  background: color-mix(in srgb, var(--accent-primary) 16%, transparent);
 }
 
 .k8s-badge {
@@ -857,14 +997,38 @@ pre {
   max-width: var(--max-width);
   margin: 0 auto;
   padding: 1.5rem;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-light);
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
   font-family: var(--font-mono);
   font-size: 0.85rem;
-  background: var(--surface-1);
+  background: var(--bg-secondary);
   border-radius: var(--radius) var(--radius) 0 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .stagger-in,
+  .os-edge.is-active,
+  .k8s-node.pulse,
+  .k8s-node.pulse-slow {
+    animation: none !important;
+  }
+
+  .stagger-in {
+    opacity: 1;
+    transform: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @media (max-width: 700px) {
